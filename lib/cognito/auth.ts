@@ -147,6 +147,15 @@ export async function signIn(
         resolve(tokens);
       },
       onFailure: (err) => {
+        // Enhanced error message for common Cognito configuration issues
+        if (err?.message?.includes("USER_SRP_AUTH is not enabled")) {
+          reject(
+            new Error(
+              "Authentication flow not enabled. Please ask your backend engineer to enable USER_SRP_AUTH in the Cognito App Client settings."
+            )
+          );
+          return;
+        }
         reject(err);
       },
       newPasswordRequired: (userAttributes, requiredAttributes) => {
