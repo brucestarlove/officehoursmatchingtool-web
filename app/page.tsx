@@ -3,10 +3,11 @@ import Image from "next/image";
 import { Button } from "@/components/ui/button-cf";
 import { Card } from "@/components/ui/card-cf";
 import { Badge } from "@/components/ui/badge-cf";
+import { Footer } from "@/components/shared/Footer";
 
 export default function Home() {
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: "var(--c-bg-page)" }}>
       {/* Hero Section */}
       <div className="mx-auto max-w-7xl rounded-b-[28px] overflow-hidden relative bg-black">
         {/* Background Image - Replace src when image is provided */}
@@ -179,34 +180,7 @@ export default function Home() {
       </main>
 
       {/* Footer */}
-      <footer className="bg-cf-beige-50 border-t border-cf-beige-300 mt-auto">
-        <div className="container mx-auto max-w-6xl px-8 py-8">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-            <div className="space-y-2">
-              <p className="text-sm font-semibold text-gray-900">CF Office Hours Matching Tool</p>
-              <p className="text-xs text-gray-600">
-                Connecting mentors and mentees in the startup ecosystem
-              </p>
-            </div>
-            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
-              <Link href="/" className="hover:text-cf-teal-600">
-                Home
-              </Link>
-              <Link href="/signup" className="hover:text-cf-teal-600">
-                Sign Up
-              </Link>
-              <Link href="/login" className="hover:text-cf-teal-600">
-                Log In
-              </Link>
-            </div>
-          </div>
-          <div className="mt-6 pt-6 border-t border-cf-beige-300">
-            <p className="text-xs text-gray-500 text-center">
-              © {new Date().getFullYear()} CF Office Hours. All rights reserved.
-            </p>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

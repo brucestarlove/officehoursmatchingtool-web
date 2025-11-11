@@ -12,6 +12,33 @@
     --cf-red-500: 4 90% 58%;
     --cf-beige-50: 40 20% 97%;
     
+    /* Additional Brand Variables */
+    --c-bg-page: #d79f1b;          /* golden page background */
+    --c-footer-light: #E4E2D5;     /* light beige section */
+    --c-footer-dark: #0C0F0E;      /* dark card / overlay base */
+    --c-text: #0c0f0e;             /* primary text */
+    --c-text-muted: #3c4440;
+    --c-white: #fff;
+    --c-accent: #f0b429;           /* mustard button */
+    --c-accent-ink: #0b0b0b;
+
+    /* Rounding & shadow */
+    --r-hero: 28px;
+    --r-card: 20px;
+    --r-pill: 9999px;
+    --shadow-soft: 0 10px 24px rgba(0,0,0,.18);
+
+    /* Layout */
+    --maxw: 1280px;
+    --pad-x: clamp(16px, 4vw, 48px);
+    --pad-y: clamp(16px, 3vw, 40px);
+
+    /* Type */
+    --h-xl: clamp(28px, 3.2vw + 8px, 44px);
+    --h-lh: 1.05;
+    --body: clamp(14px, 1vw + 10px, 18px);
+    --caps-track: 0.02em;
+    
     /* shadcn/ui variables mapped to CF colors */
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
