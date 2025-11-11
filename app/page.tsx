@@ -1,32 +1,125 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Button } from "@/components/ui/button-cf";
 import { Card } from "@/components/ui/card-cf";
 import { Badge } from "@/components/ui/badge-cf";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-background p-8">
-      <div className="container mx-auto max-w-4xl space-y-8">
-        <div className="space-y-4">
-          <h1 className="text-5xl font-display font-bold uppercase tracking-tight">
-            CF Office Hours Matching Tool
-          </h1>
-          <p className="text-lg text-muted-foreground">
-            Phase 0: Foundation & Design System Setup Complete
-          </p>
-          <div className="flex flex-wrap gap-4 pt-4">
-            <Link href="/signup">
-              <Button variant="default" size="lg">
-                Sign Up
-              </Button>
-            </Link>
-            <Link href="/login">
-              <Button variant="secondary" size="lg">
-                Log In
-              </Button>
-            </Link>
-          </div>
+    <div className="min-h-screen flex flex-col">
+      {/* Hero Section */}
+      <div className="mx-auto max-w-7xl rounded-b-[28px] overflow-hidden relative bg-black">
+        {/* Background Image - Replace src when image is provided */}
+        <div className="absolute inset-0 w-full h-full bg-cf-green-900">
+          {/* Uncomment and update src when image is ready */}
+          {/* <Image
+            src="/hero-background.jpg"
+            alt=""
+            fill
+            className="object-cover"
+            priority
+          /> */}
         </div>
+        <div className="absolute inset-0 bg-black/40"></div>
+
+        {/* Header */}
+        <header className="relative z-10 flex items-center justify-between px-6 md:px-8 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            {/* Logo placeholder - replace with actual logo */}
+            <div className="h-10 w-10 rounded bg-cf-yellow-500 flex items-center justify-center">
+              <span className="text-cf-green-900 font-bold text-lg">CF</span>
+            </div>
+            <span className="sr-only">Capital Factory</span>
+          </Link>
+
+          <nav className="hidden md:flex items-center gap-1 rounded-full bg-black/50 backdrop-blur px-3 py-1.5">
+            <Link
+              href="#"
+              className="px-3 py-1 text-sm text-white/90 hover:text-white transition-colors"
+            >
+              Startups
+            </Link>
+            <Link
+              href="#"
+              className="px-3 py-1 text-sm text-white/90 hover:text-white transition-colors"
+            >
+              Funding
+            </Link>
+            <Link
+              href="#"
+              className="px-3 py-1 text-sm text-white/90 hover:text-white transition-colors"
+            >
+              Partners
+            </Link>
+            <Link
+              href="/signup"
+              className="px-3 py-1 text-sm text-white/90 hover:text-white transition-colors"
+            >
+              Sign Up
+            </Link>
+            <Link
+              href="/login"
+              className="px-3 py-1 text-sm text-white/90 hover:text-white transition-colors"
+            >
+              Log In
+            </Link>
+          </nav>
+        </header>
+
+        {/* Content */}
+        <section className="relative z-10 grid grid-cols-12 gap-8 px-6 md:px-8 pb-12 md:pb-16 pt-4 md:pt-8">
+          {/* Left: H1 */}
+          <div className="col-span-12 md:col-span-7">
+            <h1 className="text-white font-display font-extrabold uppercase tracking-tight leading-[0.9] text-5xl sm:text-6xl md:text-7xl">
+              The center of<br />
+              gravity for<br />
+              entrepreneurs<br />
+              outside of<br />
+              Silicon Valley
+            </h1>
+          </div>
+
+          {/* Right: Details */}
+          <div className="col-span-12 md:col-span-5 self-end">
+            <p className="text-white/90 text-base md:text-lg font-semibold uppercase mb-2">
+              STARTUPS
+            </p>
+            <p className="text-white/80 text-base md:text-lg leading-relaxed mb-4">
+              Our ecosystem gives innovators across industries exactly the resources, networks and support they need to thrive.
+            </p>
+            <p className="text-white/90 text-base md:text-lg font-semibold uppercase mb-2">
+              Commons
+            </p>
+            <p className="text-white/80 text-base md:text-lg leading-relaxed">
+              Find your place at the center of gravity for entrepreneurs
+            </p>
+          </div>
+        </section>
+      </div>
+
+      {/* Main Content */}
+      <main className="flex-1 bg-background p-8">
+        <div className="container mx-auto max-w-4xl space-y-8">
+          <div className="space-y-4">
+            <h1 className="text-5xl font-display font-bold uppercase tracking-tight">
+              CF Office Hours Matching Tool
+            </h1>
+            <p className="text-lg text-muted-foreground">
+              Phase 0: Foundation & Design System Setup Complete
+            </p>
+            <div className="flex flex-wrap gap-4 pt-4">
+              <Link href="/signup">
+                <Button variant="default" size="lg">
+                  Sign Up
+                </Button>
+              </Link>
+              <Link href="/login">
+                <Button variant="secondary" size="lg">
+                  Log In
+                </Button>
+              </Link>
+            </div>
+          </div>
 
         <div className="grid gap-6 md:grid-cols-2">
           <Card variant="default">
@@ -83,7 +176,38 @@ export default function Home() {
           </Card>
         </div>
       </div>
-    </main>
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-cf-beige-50 border-t border-cf-beige-300 mt-auto">
+        <div className="container mx-auto max-w-6xl px-8 py-8">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+            <div className="space-y-2">
+              <p className="text-sm font-semibold text-gray-900">CF Office Hours Matching Tool</p>
+              <p className="text-xs text-gray-600">
+                Connecting mentors and mentees in the startup ecosystem
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-4 text-sm text-gray-600">
+              <Link href="/" className="hover:text-cf-teal-600">
+                Home
+              </Link>
+              <Link href="/signup" className="hover:text-cf-teal-600">
+                Sign Up
+              </Link>
+              <Link href="/login" className="hover:text-cf-teal-600">
+                Log In
+              </Link>
+            </div>
+          </div>
+          <div className="mt-6 pt-6 border-t border-cf-beige-300">
+            <p className="text-xs text-gray-500 text-center">
+              © {new Date().getFullYear()} CF Office Hours. All rights reserved.
+            </p>
+          </div>
+        </div>
+      </footer>
+    </div>
   );
 }
 
