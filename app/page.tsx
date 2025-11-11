@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button-cf";
 import { Card } from "@/components/ui/card-cf";
 import { Badge } from "@/components/ui/badge-cf";
@@ -13,6 +14,18 @@ export default function Home() {
           <p className="text-lg text-muted-foreground">
             Phase 0: Foundation & Design System Setup Complete
           </p>
+          <div className="flex flex-wrap gap-4 pt-4">
+            <Link href="/signup">
+              <Button variant="default" size="lg">
+                Sign Up
+              </Button>
+            </Link>
+            <Link href="/login">
+              <Button variant="secondary" size="lg">
+                Log In
+              </Button>
+            </Link>
+          </div>
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
