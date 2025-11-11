@@ -1,0 +1,99 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* CF Brand Colors - HSL format for shadcn/ui */
+    --cf-teal-500: 173 100% 33%;
+    --cf-yellow-500: 45 100% 50%;
+    --cf-green-900: 142 60% 20%;
+    --cf-green-950: 142 70% 12%;
+    --cf-red-500: 4 90% 58%;
+    --cf-beige-50: 40 20% 97%;
+    
+    /* shadcn/ui variables mapped to CF colors */
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    
+    --primary: 173 100% 33%;  /* CF Teal */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 45 100% 50%;  /* CF Yellow */
+    --secondary-foreground: 0 0% 9%;
+    
+    --accent: 45 100% 50%;  /* CF Yellow */
+    --accent-foreground: 0 0% 9%;
+    
+    --destructive: 4 90% 58%;  /* CF Red */
+    --destructive-foreground: 0 0% 98%;
+    
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+    
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 173 100% 33%;  /* CF Teal */
+    
+    --radius: 0.75rem;  /* CF standard radius */
+  }
+  
+  .dark {
+    --background: 222.2 84% 4.9%;
+    --foreground: 210 40% 98%;
+    
+    --primary: 173 100% 40%;  /* Lighter teal for dark mode */
+    --primary-foreground: 0 0% 100%;
+    
+    --secondary: 45 100% 55%;  /* Lighter yellow for dark mode */
+    --secondary-foreground: 0 0% 9%;
+    
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+    
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 173 100% 40%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+  
+  /* CF Typography Styles */
+  h1, h2, h3 {
+    @apply font-display font-bold uppercase tracking-tight;
+  }
+  
+  h1 {
+    @apply text-4xl md:text-5xl lg:text-6xl;
+  }
+  
+  h2 {
+    @apply text-3xl md:text-4xl lg:text-5xl;
+  }
+  
+  h3 {
+    @apply text-2xl md:text-3xl;
+  }
+  
+  h4, h5, h6 {
+    @apply font-sans font-semibold;
+  }
+}
+
