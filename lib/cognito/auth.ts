@@ -5,9 +5,18 @@
  * from Client Components or client-side code.
  */
 
+// Type-only import for type definitions (doesn't affect runtime)
+import type * as CognitoSDK from "amazon-cognito-identity-js";
+
 // Lazy import types and classes (client-side only)
-type CognitoTypes = typeof import("amazon-cognito-identity-js");
+type CognitoTypes = typeof CognitoSDK;
 let cognitoModule: CognitoTypes | null = null;
+
+// Type aliases for cleaner code
+type CognitoUser = CognitoSDK.CognitoUser;
+type CognitoUserSession = CognitoSDK.CognitoUserSession;
+type CognitoUserAttribute = CognitoSDK.CognitoUserAttribute;
+type ISignUpResult = CognitoSDK.ISignUpResult;
 
 /**
  * Dynamically import Cognito SDK (client-side only)
@@ -48,7 +57,7 @@ export async function signUp(
   email: string,
   password: string,
   attributes: UserAttributes = {}
-): Promise<import("amazon-cognito-identity-js").CognitoUser> {
+): Promise<CognitoUser> {
   const cognito = await getCognitoModule();
   const userPool = await getUserPool();
   
@@ -66,7 +75,7 @@ export async function signUp(
       password,
       attributeList,
       [],
-      (err, result) => {
+      (err: Error | undefined, result: ISignUpResult | undefined) => {
         if (err) {
           reject(err);
           return;
@@ -167,7 +176,7 @@ export async function getCurrentSession(): Promise<AuthTokens | null> {
       return;
     }
 
-      cognitoUser.getSession((err: Error | null, session: import("amazon-cognito-identity-js").CognitoUserSession | null): void => {
+      cognitoUser.getSession((err: Error | undefined, session: CognitoUserSession | null): void => {
       if (err) {
         reject(err);
         return;
@@ -219,7 +228,7 @@ export async function refreshAccessToken(
       {
         getToken: () => refreshToken,
       },
-      (err, session) => {
+      (err: Error | undefined, session: CognitoUserSession | null) => {
         if (err) {
           reject(err);
           return;
@@ -307,13 +316,13 @@ export async function getCurrentUserAttributes(): Promise<UserAttributes> {
       return;
     }
 
-    cognitoUser.getSession((err: Error | undefined, session: import("amazon-cognito-identity-js").CognitoUserSession | null): void => {
+    cognitoUser.getSession((err: Error | undefined, session: CognitoUserSession | null): void => {
       if (err || !session) {
         reject(err || new Error("No valid session"));
         return;
       }
 
-      cognitoUser.getUserAttributes((err: Error | undefined, attributes: import("amazon-cognito-identity-js").CognitoUserAttribute[] | undefined): void => {
+        cognitoUser.getUserAttributes((err: Error | undefined, attributes: CognitoUserAttribute[] | undefined): void => {
         if (err) {
           reject(err);
           return;

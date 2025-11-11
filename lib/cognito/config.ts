@@ -7,8 +7,11 @@
  * Best Practice: Always import this module conditionally or in client components only.
  */
 
+// Type-only import for type definitions (doesn't affect runtime)
+import type * as CognitoSDK from "amazon-cognito-identity-js";
+
 // Lazy import Cognito SDK only on client-side
-let CognitoUserPool: typeof import("amazon-cognito-identity-js").CognitoUserPool | null = null;
+let CognitoUserPool: typeof CognitoSDK.CognitoUserPool | null = null;
 
 /**
  * Dynamically import Cognito SDK (client-side only)
@@ -30,7 +33,7 @@ async function getCognitoSDK() {
 }
 
 // Cache for user pool instance
-let userPoolInstance: InstanceType<typeof CognitoUserPool> | null = null;
+let userPoolInstance: InstanceType<typeof CognitoSDK.CognitoUserPool> | null = null;
 
 /**
  * Get Cognito User Pool instance (client-side only)
@@ -40,7 +43,7 @@ let userPoolInstance: InstanceType<typeof CognitoUserPool> | null = null;
  * 2. Environment variables are validated
  * 3. Singleton pattern for pool instance
  */
-export async function getUserPool(): Promise<InstanceType<typeof CognitoUserPool>> {
+export async function getUserPool(): Promise<InstanceType<typeof CognitoSDK.CognitoUserPool>> {
   // Guard: Ensure we're on client-side
   if (typeof window === "undefined") {
     throw new Error(
