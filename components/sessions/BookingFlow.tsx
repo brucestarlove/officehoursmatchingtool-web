@@ -10,6 +10,8 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useMentor, useMentorAvailability } from "@/lib/hooks/useMentors";
 import { useBookSession } from "@/lib/hooks/useSessions";
 import { useAuth } from "@/lib/hooks/useAuth";
+import { useToast } from "@/lib/hooks/useToast";
+import { getErrorMessage } from "@/lib/utils/errorMessages";
 import type { TimeSlot, Mentor } from "@/types";
 
 interface BookingFlowProps {
@@ -43,6 +45,7 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
   );
 
   const bookSessionMutation = useBookSession();
+  const toast = useToast();
 
   const handleSlotSelect = (slot: TimeSlot) => {
     setSelectedSlot(slot);
@@ -66,9 +69,10 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
         meetingType,
         goals: goals.trim() || undefined,
       });
+      toast.success("Session booked!", "Your session has been successfully booked.");
       setStep(3);
     } catch (error) {
-      // Error handling is done in the mutation
+      toast.error("Failed to book session", getErrorMessage(error));
     }
   };
 
@@ -247,12 +251,6 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
             </Button>
           </div>
 
-          {/* Error Message */}
-          {bookSessionMutation.isError && (
-            <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
-              Failed to book session. Please try again.
-            </div>
-          )}
         </div>
       )}
     </div>

@@ -10,6 +10,7 @@ import {
   getUpcomingSessions,
 } from "@/lib/api/sessions";
 import type { BookingRequest, Session } from "@/types";
+import { logger } from "@/lib/utils/logger";
 
 // Query keys
 export const sessionQueryKeys = {
@@ -34,6 +35,9 @@ export function useBookSession() {
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all });
       // Also invalidate mentor availability
       queryClient.invalidateQueries({ queryKey: ["mentors"] });
+    },
+    onError: (error) => {
+      logger.error("Failed to book session", error, { context: "useBookSession" });
     },
   });
 }
@@ -79,6 +83,9 @@ export function useRescheduleSession() {
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all });
       queryClient.setQueryData(sessionQueryKeys.detail(data.id), data);
     },
+    onError: (error) => {
+      logger.error("Failed to reschedule session", error, { context: "useRescheduleSession" });
+    },
   });
 }
 
@@ -93,6 +100,9 @@ export function useCancelSession() {
     onSuccess: (_, sessionId) => {
       queryClient.invalidateQueries({ queryKey: sessionQueryKeys.all });
       queryClient.removeQueries({ queryKey: sessionQueryKeys.detail(sessionId) });
+    },
+    onError: (error) => {
+      logger.error("Failed to cancel session", error, { context: "useCancelSession" });
     },
   });
 }

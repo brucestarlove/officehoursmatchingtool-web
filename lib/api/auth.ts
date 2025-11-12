@@ -1,35 +1,5 @@
 import apiClient from "./client";
-
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role: "mentor" | "mentee";
-  profile?: MentorProfile | MenteeProfile;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface MentorProfile {
-  id: string;
-  userId: string;
-  bio?: string;
-  expertise: string[];
-  industries: string[];
-  company?: string;
-  title?: string;
-  rating?: number;
-  reviewCount?: number;
-}
-
-export interface MenteeProfile {
-  id: string;
-  userId: string;
-  bio?: string;
-  goals: string[];
-  interests: string[];
-  startupStage?: string;
-}
+import type { User, MentorProfile, MenteeProfile } from "@/types";
 
 /**
  * Get current authenticated user

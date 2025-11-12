@@ -8,7 +8,7 @@ import { MentorCard } from "@/components/match/MentorCard";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useMatchMentors } from "@/lib/hooks/useMentors";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 
 interface MentorSuggestionsProps {
   limit?: number;
@@ -20,15 +20,25 @@ interface MentorSuggestionsProps {
 export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [touchStart, setTouchStart] = useState<number | null>(null);
+  const [touchEnd, setTouchEnd] = useState<number | null>(null);
+  const carouselRef = useRef<HTMLDivElement>(null);
 
-  // Get suggestions based on user's goals/interests
+  // Minimum swipe distance (in pixels)
+  const minSwipeDistance = 50;
+
+  // Get suggestions based on user's goals/interests and feedback history
   const suggestionQuery = user?.profile && "goals" in user.profile
     ? user.profile.goals.join(", ")
     : "startup mentorship";
 
+  // Enhanced filters: incorporate feedback data if available
   const { data: matchData, isLoading } = useMatchMentors({
     query: suggestionQuery,
-    filters: {},
+    filters: {
+      minRating: 4, // Prefer highly rated mentors
+      pastInteractions: "new-mentors-only", // Suggest new mentors by default
+    },
   });
 
   if (isLoading) {
@@ -60,6 +70,30 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
     setCurrentIndex((prev) => (prev < mentors.length - 1 ? prev + 1 : 0));
   };
 
+  // Touch handlers for swipe gestures
+  const onTouchStart = (e: React.TouchEvent) => {
+    setTouchEnd(null);
+    setTouchStart(e.targetTouches[0].clientX);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    setTouchEnd(e.targetTouches[0].clientX);
+  };
+
+  const onTouchEnd = () => {
+    if (!touchStart || !touchEnd) return;
+
+    const distance = touchStart - touchEnd;
+    const isLeftSwipe = distance > minSwipeDistance;
+    const isRightSwipe = distance < -minSwipeDistance;
+
+    if (isLeftSwipe) {
+      handleNext();
+    } else if (isRightSwipe) {
+      handlePrevious();
+    }
+  };
+
   return (
     <Card variant="default">
       <CardHeader>
@@ -75,9 +109,15 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
       <CardContent>
         <div className="relative">
           {/* Carousel */}
-          <div className="overflow-hidden">
+          <div
+            ref={carouselRef}
+            className="overflow-hidden"
+            onTouchStart={onTouchStart}
+            onTouchMove={onTouchMove}
+            onTouchEnd={onTouchEnd}
+          >
             <div
-              className="flex transition-transform duration-300"
+              className="flex transition-transform duration-300 ease-in-out"
               style={{ transform: `translateX(-${currentIndex * 100}%)` }}
             >
               {mentors.map((mentor) => (

@@ -55,7 +55,10 @@ export function FilterSidebar({
     (localFilters.expertise?.length || 0) +
     (localFilters.industry ? 1 : 0) +
     (localFilters.stage ? 1 : 0) +
-    (localFilters.availability ? 1 : 0);
+    (localFilters.availability ? 1 : 0) +
+    (localFilters.dateRange ? 1 : 0) +
+    (localFilters.pastInteractions ? 1 : 0) +
+    (localFilters.minRating ? 1 : 0);
 
   const content = (
     <Card variant="default" className="p-6">
@@ -135,6 +138,7 @@ export function FilterSidebar({
             { value: "this-week", label: "This Week" },
             { value: "next-week", label: "Next Week" },
             { value: "anytime", label: "Anytime" },
+            { value: "custom-range", label: "Custom Range" },
           ].map((option) => (
             <label key={option.value} className="flex items-center space-x-2">
               <input
@@ -151,6 +155,114 @@ export function FilterSidebar({
             </label>
           ))}
         </div>
+
+        {/* Custom Date Range */}
+        {localFilters.availability === "custom-range" && (
+          <div className="mt-3 space-y-2 rounded-md border border-gray-200 p-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={
+                  localFilters.dateRange?.start
+                    ? new Date(localFilters.dateRange.start)
+                        .toISOString()
+                        .split("T")[0]
+                    : ""
+                }
+                onChange={(e) => {
+                  const start = e.target.value
+                    ? new Date(e.target.value).toISOString()
+                    : undefined;
+                  updateFilter("dateRange", {
+                    ...localFilters.dateRange,
+                    start: start || "",
+                    end: localFilters.dateRange?.end || "",
+                  });
+                }}
+                className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-gray-600">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={
+                  localFilters.dateRange?.end
+                    ? new Date(localFilters.dateRange.end)
+                        .toISOString()
+                        .split("T")[0]
+                    : ""
+                }
+                onChange={(e) => {
+                  const end = e.target.value
+                    ? new Date(e.target.value).toISOString()
+                    : undefined;
+                  updateFilter("dateRange", {
+                    ...localFilters.dateRange,
+                    start: localFilters.dateRange?.start || "",
+                    end: end || "",
+                  });
+                }}
+                min={
+                  localFilters.dateRange?.start
+                    ? new Date(localFilters.dateRange.start)
+                        .toISOString()
+                        .split("T")[0]
+                    : undefined
+                }
+                className="w-full rounded-md border border-gray-300 px-2 py-1.5 text-sm"
+              />
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Past Interactions */}
+      <div className="mb-6">
+        <label className="mb-2 block text-sm font-medium">
+          Past Interactions
+        </label>
+        <select
+          value={localFilters.pastInteractions || "all"}
+          onChange={(e) =>
+            updateFilter(
+              "pastInteractions",
+              e.target.value === "all" ? undefined : (e.target.value as any)
+            )
+          }
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="all">All Mentors</option>
+          <option value="previously-booked">Previously Booked</option>
+          <option value="new-mentors-only">New Mentors Only</option>
+        </select>
+      </div>
+
+      {/* Minimum Rating */}
+      <div className="mb-6">
+        <label className="mb-2 block text-sm font-medium">
+          Minimum Rating
+        </label>
+        <select
+          value={localFilters.minRating || ""}
+          onChange={(e) =>
+            updateFilter(
+              "minRating",
+              e.target.value ? Number(e.target.value) : undefined
+            )
+          }
+          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+        >
+          <option value="">No Minimum</option>
+          <option value="4">4+ Stars (Highly Rated)</option>
+          <option value="3">3+ Stars</option>
+          <option value="2">2+ Stars</option>
+        </select>
       </div>
 
       {/* Clear Filters */}

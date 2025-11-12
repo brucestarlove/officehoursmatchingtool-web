@@ -1,5 +1,9 @@
 // Core types for Phase 2: Matching & Booking
 
+import type { UserRole } from "@/lib/constants/roles";
+import type { SessionStatus, MeetingType } from "@/lib/constants/sessions";
+
+// Entity Types
 export interface Mentor {
   id: string;
   userId: string;
@@ -35,6 +39,28 @@ export interface Mentee {
   updatedAt: string;
 }
 
+// Profile types - subset of full entity types for profile management
+export type MentorProfile = Pick<
+  Mentor,
+  "id" | "userId" | "bio" | "expertise" | "industries" | "company" | "title" | "rating" | "reviewCount"
+>;
+
+export type MenteeProfile = Pick<
+  Mentee,
+  "id" | "userId" | "bio" | "goals" | "interests" | "startupStage"
+>;
+
+// User & Authentication Types
+export interface User {
+  id: string;
+  email: string;
+  name?: string;
+  role: UserRole;
+  profile?: MentorProfile | MenteeProfile;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface Session {
   id: string;
   mentorId: string;
@@ -43,10 +69,10 @@ export interface Session {
   mentee?: Mentee;
   startTime: string; // ISO 8601
   duration: number; // minutes
-  meetingType: "video" | "in-person";
+  meetingType: MeetingType;
   meetingLink?: string;
   goals?: string;
-  status: "scheduled" | "completed" | "cancelled" | "rescheduled";
+  status: SessionStatus;
   createdAt: string;
   updatedAt: string;
 }
@@ -89,7 +115,13 @@ export interface MatchFilters {
   expertise?: string[];
   industry?: string;
   stage?: string;
-  availability?: "this-week" | "next-week" | "anytime";
+  availability?: "this-week" | "next-week" | "anytime" | "custom-range";
+  dateRange?: {
+    start: string; // ISO 8601
+    end: string; // ISO 8601
+  };
+  pastInteractions?: "previously-booked" | "new-mentors-only" | "all";
+  minRating?: number; // Minimum rating (e.g., 4 for highly rated)
 }
 
 export interface MatchRequest {
@@ -132,7 +164,7 @@ export interface BookingRequest {
   menteeId: string;
   startTime: string; // ISO 8601
   duration: number; // minutes
-  meetingType: "video" | "in-person";
+  meetingType: MeetingType;
   goals?: string;
 }
 
@@ -156,8 +188,39 @@ export interface UpcomingSession {
   duration: number;
   mentor?: Mentor;
   mentee?: Mentee;
-  meetingType: "video" | "in-person";
+  meetingType: MeetingType;
   meetingLink?: string;
   goals?: string;
+}
+
+// Feedback Types
+export interface FeedbackSubmission {
+  rating: number; // 1-5
+  comment?: string;
+  outcomeTags?: string[];
+}
+
+export interface MentorReputation {
+  mentorId: string;
+  averageRating: number;
+  totalReviews: number;
+  sessionCount: number;
+  completionRate: number; // 0-1
+  recentActivity: string; // ISO 8601
+  ranking?: number;
+}
+
+export interface MentorStats {
+  mentorId: string;
+  totalSessions: number;
+  completedSessions: number;
+  cancelledSessions: number;
+  averageRating: number;
+  ratingDistribution: {
+    [rating: number]: number; // rating -> count
+  };
+  totalFeedback: number;
+  pastSessionTopics: string[]; // Most common topics
+  lastSessionDate?: string; // ISO 8601
 }
 

@@ -5,6 +5,7 @@ import type {
   BookingResponse,
   UpcomingSession,
 } from "@/types";
+import { DEFAULT_PAGE_SIZE } from "@/lib/constants/sessions";
 
 /**
  * Book a session
@@ -77,8 +78,19 @@ export async function getUpcomingSessions(): Promise<UpcomingSession[]> {
   const response = await listSessions({
     status: "upcoming",
     sort: "date",
-    limit: 10,
+    limit: DEFAULT_PAGE_SIZE,
   });
-  return response.sessions as UpcomingSession[];
+  
+  // Safely map Session[] to UpcomingSession[]
+  // UpcomingSession is a subset of Session, so we can safely map
+  return response.sessions.map((session): UpcomingSession => ({
+    id: session.id,
+    startTime: session.startTime,
+    duration: session.duration,
+    mentor: session.mentor,
+    mentee: session.mentee,
+    meetingType: session.meetingType,
+    meetingLink: session.meetingLink,
+    goals: session.goals,
+  }));
 }
-

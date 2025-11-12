@@ -13,6 +13,8 @@ import {
   confirmPassword,
 } from "@/lib/cognito/auth";
 import type { UserAttributes } from "@/lib/cognito/auth";
+import { logger } from "@/lib/utils/logger";
+import { QUERY_STALE_TIMES, QUERY_RETRY } from "@/lib/constants/query";
 
 const AUTH_QUERY_KEY = ["auth", "user"];
 
@@ -36,8 +38,8 @@ export function useAuth() {
       // Then get user from backend
       return getCurrentUser();
     },
-    retry: false,
-    staleTime: 5 * 60 * 1000, // 5 minutes
+    retry: QUERY_RETRY.NONE,
+    staleTime: QUERY_STALE_TIMES.STANDARD,
   });
 
   // Sign in mutation
@@ -57,6 +59,9 @@ export function useAuth() {
     onSuccess: () => {
       router.push("/dashboard");
     },
+    onError: (error) => {
+      logger.error("Sign in failed", error, { context: "useAuth.signInMutation" });
+    },
   });
 
   // Sign up mutation
@@ -72,6 +77,9 @@ export function useAuth() {
     }) => {
       return signUp(email, password, attributes);
     },
+    onError: (error) => {
+      logger.error("Sign up failed", error, { context: "useAuth.signUpMutation" });
+    },
   });
 
   // Confirm sign up mutation
@@ -84,6 +92,9 @@ export function useAuth() {
     onSuccess: () => {
       router.push("/login");
     },
+    onError: (error) => {
+      logger.error("Confirm sign up failed", error, { context: "useAuth.confirmSignUpMutation" });
+    },
   });
 
   // Sign out mutation
@@ -95,12 +106,18 @@ export function useAuth() {
     onSuccess: () => {
       router.push("/login");
     },
+    onError: (error) => {
+      logger.error("Sign out failed", error, { context: "useAuth.signOutMutation" });
+    },
   });
 
   // Forgot password mutation
   const forgotPasswordMutation = useMutation({
     mutationFn: async (email: string) => {
       return forgotPassword(email);
+    },
+    onError: (error) => {
+      logger.error("Forgot password failed", error, { context: "useAuth.forgotPasswordMutation" });
     },
   });
 
@@ -119,6 +136,9 @@ export function useAuth() {
     },
     onSuccess: () => {
       router.push("/login");
+    },
+    onError: (error) => {
+      logger.error("Confirm password failed", error, { context: "useAuth.confirmPasswordMutation" });
     },
   });
 
@@ -139,4 +159,3 @@ export function useAuth() {
     isSigningOut: signOutMutation.isPending,
   };
 }
-

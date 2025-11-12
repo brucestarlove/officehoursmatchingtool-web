@@ -70,6 +70,8 @@ export async function getUserPool(): Promise<InstanceType<typeof CognitoSDK.Cogn
   }
 
   // Create and cache instance
+  // The SDK automatically constructs the endpoint from UserPoolId
+  // Format: https://cognito-idp.{region}.amazonaws.com/{userPoolId}
   userPoolInstance = new CognitoUserPoolClass({
     UserPoolId: userPoolId,
     ClientId: clientId,

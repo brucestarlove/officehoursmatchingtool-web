@@ -36,6 +36,7 @@ async function getCognitoModule(): Promise<CognitoTypes> {
 }
 
 import { getUserPool } from "./config";
+import { logger } from "@/lib/utils/logger";
 
 export interface AuthTokens {
   accessToken: string;
@@ -77,6 +78,15 @@ export async function signUp(
       [],
       (err: Error | undefined, result: ISignUpResult | undefined) => {
         if (err) {
+          // Enhanced error message for debugging
+          logger.error("Cognito signUp error", err, {
+            code: (err as Record<string, unknown>).code,
+            name: err.name,
+            attributes: attributeList.map((attr) => ({
+              name: attr.getName(),
+              value: attr.getValue(),
+            })),
+          });
           reject(err);
           return;
         }

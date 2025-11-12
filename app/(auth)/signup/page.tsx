@@ -14,10 +14,14 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card-cf";
 import { Badge } from "@/components/ui/badge-cf";
+import { logger } from "@/lib/utils/logger";
+import { useToast } from "@/lib/hooks/useToast";
+import { getErrorMessage } from "@/lib/utils/errorMessages";
 
 export default function SignUpPage() {
   const router = useRouter();
   const { signUp, isSigningUp } = useAuth();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
   const [showVerification, setShowVerification] = useState(false);
   const [email, setEmail] = useState("");
@@ -36,19 +40,31 @@ export default function SignUpPage() {
   const onSubmit = async (data: SignUpInput) => {
     try {
       setError(null);
+      
+      // Note: custom:role must be defined in User Pool schema to use it
+      // If not defined, remove "custom:role" and set role via backend API
       await signUp({
         email: data.email,
         password: data.password,
         attributes: {
           email: data.email,
           name: data.name,
-          "custom:role": data.role,
+          // Uncomment if custom:role is defined in User Pool schema:
+          // "custom:role": data.role,
         },
       });
+      
+      // Store role in localStorage to send to backend after email verification
+      localStorage.setItem("pendingRole", data.role);
+      
       setEmail(data.email);
       setShowVerification(true);
     } catch (err: any) {
-      setError(err.message || "Sign up failed. Please try again.");
+      // Enhanced error handling
+      const errorMessage = getErrorMessage(err, "Sign up failed. Please try again.");
+      logger.error("Sign up error", err);
+      setError(errorMessage);
+      toast.error("Sign up failed", errorMessage);
     }
   };
 
@@ -220,6 +236,7 @@ function VerificationStep({
 }) {
   const router = useRouter();
   const { confirmSignUp, isConfirmingSignUp } = useAuth();
+  const toast = useToast();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
@@ -228,9 +245,12 @@ function VerificationStep({
     try {
       setError(null);
       await confirmSignUp({ email, code });
+      toast.success("Email verified!", "You can now sign in to your account.");
       router.push("/login");
     } catch (err: any) {
-      setError(err.message || "Invalid verification code. Please try again.");
+      const errorMessage = getErrorMessage(err, "Invalid verification code. Please try again.");
+      setError(errorMessage);
+      toast.error("Verification failed", errorMessage);
     }
   };
 

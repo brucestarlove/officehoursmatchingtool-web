@@ -13,10 +13,13 @@ import { Label } from "@/components/ui/label";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card-cf";
+import { useToast } from "@/lib/hooks/useToast";
+import { getErrorMessage } from "@/lib/utils/errorMessages";
 
 export default function LoginPage() {
   const router = useRouter();
   const { signIn, isSigningIn } = useAuth();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -31,11 +34,12 @@ export default function LoginPage() {
     try {
       setError(null);
       await signIn({ email: data.email, password: data.password });
+      toast.success("Welcome back!", "You have successfully signed in.");
       router.push("/dashboard");
     } catch (err: any) {
-      setError(
-        err.message || "Invalid email or password. Please try again."
-      );
+      const errorMessage = getErrorMessage(err, "Invalid email or password. Please try again.");
+      setError(errorMessage);
+      toast.error("Sign in failed", errorMessage);
     }
   };
 

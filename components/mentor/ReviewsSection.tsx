@@ -4,12 +4,15 @@ import { useState } from "react";
 import { Star, ChevronDown, ChevronUp } from "lucide-react";
 import { Card } from "@/components/ui/card-cf";
 import { Button } from "@/components/ui/button-cf";
-import type { Review } from "@/types";
+import { Badge } from "@/components/ui/badge-cf";
+import { FeedbackCard } from "@/components/feedback/FeedbackCard";
+import type { Review, MentorStats } from "@/types";
 
 interface ReviewsSectionProps {
   reviews: Review[];
   averageRating?: number;
   reviewCount?: number;
+  stats?: MentorStats; // Optional stats for past session topics
 }
 
 /**
@@ -19,6 +22,7 @@ export function ReviewsSection({
   reviews,
   averageRating,
   reviewCount,
+  stats,
 }: ReviewsSectionProps) {
   const [showAll, setShowAll] = useState(false);
   const displayedReviews = showAll ? reviews : reviews.slice(0, 3);
@@ -66,26 +70,54 @@ export function ReviewsSection({
           </div>
         )}
 
-        {/* Rating Distribution */}
+        {/* Rating Distribution Chart */}
         {reviews.length > 0 && (
           <div className="mt-4 space-y-2">
+            <h4 className="mb-2 text-sm font-semibold text-gray-700">
+              Rating Distribution
+            </h4>
             {ratingDistribution.map(({ rating, count, percentage }) => (
               <div key={rating} className="flex items-center gap-2">
-                <span className="w-8 text-sm">{rating}</span>
+                <span className="w-8 text-sm font-medium">{rating}</span>
                 <Star className="h-3 w-3 fill-cf-yellow-500 text-cf-yellow-500" />
                 <div className="flex-1">
-                  <div className="h-2 w-full rounded-full bg-gray-200">
+                  <div className="h-3 w-full rounded-full bg-gray-200 overflow-hidden">
                     <div
-                      className="h-2 rounded-full bg-cf-yellow-500"
+                      className="h-full rounded-full bg-gradient-to-r from-cf-yellow-400 to-cf-yellow-500 transition-all duration-500"
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
                 </div>
-                <span className="w-8 text-right text-xs text-muted-foreground">
+                <span className="w-8 text-right text-xs font-medium text-gray-600">
                   {count}
                 </span>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Past Session Topics */}
+        {stats && stats.pastSessionTopics && stats.pastSessionTopics.length > 0 && (
+          <div className="mt-6">
+            <h4 className="mb-2 text-sm font-semibold text-gray-700">
+              Common Session Topics
+            </h4>
+            <div className="flex flex-wrap gap-2">
+              {stats.pastSessionTopics.slice(0, 8).map((topic, index) => (
+                <Badge
+                  key={topic}
+                  variant="default"
+                  className="text-xs"
+                >
+                  {topic}
+                </Badge>
+              ))}
+              {stats.pastSessionTopics.length > 8 && (
+                <Badge variant="outline" className="text-xs">
+                  +{stats.pastSessionTopics.length - 8} more
+                </Badge>
+              )}
+            </div>
           </div>
         )}
       </div>
@@ -98,54 +130,29 @@ export function ReviewsSection({
       ) : (
         <div className="space-y-4">
           {displayedReviews.map((review) => (
-            <div key={review.id} className="border-b border-gray-200 pb-4 last:border-0">
-              <div className="mb-2 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  {renderStars(review.rating)}
-                  {review.menteeName && (
-                    <span className="text-sm font-medium">{review.menteeName}</span>
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {new Date(review.createdAt).toLocaleDateString()}
-                </span>
-              </div>
-              {review.comment && (
-                <p className="mt-2 text-sm text-muted-foreground">{review.comment}</p>
-              )}
-              {review.outcomeTags && review.outcomeTags.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {review.outcomeTags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="rounded-full bg-cf-teal-100 px-2 py-0.5 text-xs text-cf-teal-800"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </div>
+            <FeedbackCard key={review.id} review={review} />
           ))}
 
           {reviews.length > 3 && (
-            <Button
-              variant="outline"
-              className="w-full"
-              onClick={() => setShowAll(!showAll)}
-            >
-              {showAll ? (
-                <>
-                  <ChevronUp className="mr-2 h-4 w-4" />
-                  Show Less
-                </>
-              ) : (
-                <>
-                  <ChevronDown className="mr-2 h-4 w-4" />
-                  Show All Reviews ({reviews.length})
-                </>
-              )}
-            </Button>
+            <div className="pt-2">
+              <Button
+                variant="outline"
+                className="w-full"
+                onClick={() => setShowAll(!showAll)}
+              >
+                {showAll ? (
+                  <>
+                    <ChevronUp className="mr-2 h-4 w-4" />
+                    Show Less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="mr-2 h-4 w-4" />
+                    Show All Reviews ({reviews.length})
+                  </>
+                )}
+              </Button>
+            </div>
           )}
         </div>
       )}

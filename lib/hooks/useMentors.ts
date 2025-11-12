@@ -1,6 +1,6 @@
 "use client";
 
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   matchMentors,
   searchMentors,
@@ -10,7 +10,6 @@ import {
 import type {
   MatchRequest,
   MentorSearchParams,
-  Mentor,
 } from "@/types";
 
 // Query keys
@@ -18,6 +17,8 @@ export const mentorQueryKeys = {
   all: ["mentors"] as const,
   search: (query: string, filters: MatchRequest["filters"]) =>
     ["mentors", "search", query, filters] as const,
+  searchParams: (params: MentorSearchParams) =>
+    ["mentors", "search", params] as const,
   detail: (id: string) => ["mentors", id] as const,
   availability: (id: string, startDate?: string, endDate?: string) =>
     ["mentors", id, "availability", startDate, endDate] as const,
@@ -40,7 +41,7 @@ export function useMatchMentors(request: MatchRequest) {
  */
 export function useSearchMentors(params: MentorSearchParams) {
   return useQuery({
-    queryKey: ["mentors", "search", params],
+    queryKey: mentorQueryKeys.searchParams(params),
     queryFn: () => searchMentors(params),
     enabled: !!(params.search || params.expertise || params.industry),
     staleTime: 5 * 60 * 1000, // 5 minutes

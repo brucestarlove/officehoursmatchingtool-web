@@ -18,10 +18,13 @@ import { Label } from "@/components/ui/label";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card-cf";
+import { useToast } from "@/lib/hooks/useToast";
+import { getErrorMessage } from "@/lib/utils/errorMessages";
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
   const { forgotPassword, confirmPassword } = useAuth();
+  const toast = useToast();
   const [step, setStep] = useState<"request" | "reset">("request");
   const [email, setEmail] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -40,10 +43,13 @@ export default function ForgotPasswordPage() {
       setError(null);
       setIsLoading(true);
       await forgotPassword(data.email);
+      toast.success("Reset code sent", "Please check your email for the verification code.");
       setEmail(data.email);
       setStep("reset");
     } catch (err: any) {
-      setError(err.message || "Failed to send reset code. Please try again.");
+      const errorMessage = getErrorMessage(err, "Failed to send reset code. Please try again.");
+      setError(errorMessage);
+      toast.error("Failed to send reset code", errorMessage);
     } finally {
       setIsLoading(false);
     }
@@ -58,9 +64,12 @@ export default function ForgotPasswordPage() {
         code: data.code,
         newPassword: data.password,
       });
+      toast.success("Password reset!", "Your password has been successfully reset. Please sign in.");
       router.push("/login");
     } catch (err: any) {
-      setError(err.message || "Failed to reset password. Please try again.");
+      const errorMessage = getErrorMessage(err, "Failed to reset password. Please try again.");
+      setError(errorMessage);
+      toast.error("Failed to reset password", errorMessage);
     } finally {
       setIsLoading(false);
     }
