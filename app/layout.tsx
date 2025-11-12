@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { QueryProvider } from "@/lib/providers/QueryProvider";
+import { SessionProvider } from "@/lib/providers/SessionProvider";
 import { ToastProvider } from "@/components/ui/ToastProvider";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import "./globals.css";
@@ -30,9 +31,11 @@ export default function RootLayout({
     <html lang="en">
       <body className={`${inter.variable} ${interDisplay.variable} font-sans`}>
         <ErrorBoundary>
-          <QueryProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </QueryProvider>
+          <SessionProvider>
+            <QueryProvider>
+              <ToastProvider>{children}</ToastProvider>
+            </QueryProvider>
+          </SessionProvider>
         </ErrorBoundary>
       </body>
     </html>

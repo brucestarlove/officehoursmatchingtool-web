@@ -24,8 +24,6 @@ export default function SignUpPage() {
   const { signUp, isSigningUp } = useAuth();
   const toast = useToast();
   const [error, setError] = useState<string | null>(null);
-  const [showVerification, setShowVerification] = useState(false);
-  const [email, setEmail] = useState("");
 
   const {
     register,
@@ -56,30 +54,19 @@ export default function SignUpPage() {
     try {
       setError(null);
       
-      // Note: custom:role must be defined in User Pool schema to use it
-      // If not defined, remove "custom:role" and set role via backend API
+      // Sign up with NextAuth - automatically signs in after signup
       await signUp({
         email: data.email,
         password: data.password,
-        attributes: {
-          email: data.email,
-          name: data.name,
-          // Uncomment if custom:role is defined in User Pool schema:
-          // "custom:role": data.role,
-        },
+        name: data.name,
+        role: data.role,
       });
       
-      // Store role and password temporarily for post-verification sign-in
-      // Role is stored in localStorage (persists until user is created in DB)
-      // Password is stored in sessionStorage (cleared on tab close) for better security
-      localStorage.setItem("pendingRole", data.role);
-      sessionStorage.setItem("pendingPassword", data.password);
-      
-      // Clear form state on successful signup (keep email for verification step)
+      // Clear form state on successful signup
       clearAuthFormState();
       
-      setEmail(data.email);
-      setShowVerification(true);
+      // User is automatically signed in and redirected to dashboard
+      // No verification step needed for now
     } catch (err: any) {
       // Enhanced error handling
       const errorMessage = getErrorMessage(err, "Sign up failed. Please try again.");
@@ -88,12 +75,6 @@ export default function SignUpPage() {
       toast.error("Sign up failed", errorMessage);
     }
   };
-
-  if (showVerification) {
-    return (
-      <VerificationStep email={email} onBack={() => setShowVerification(false)} />
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-cf-beige-50 px-4 py-12">
@@ -242,127 +223,6 @@ export default function SignUpPage() {
               Sign in
             </Link>
           </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function VerificationStep({
-  email,
-  onBack,
-}: {
-  email: string;
-  onBack: () => void;
-}) {
-  const router = useRouter();
-  const { confirmSignUp, signIn, isConfirmingSignUp } = useAuth();
-  const toast = useToast();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [isSigningIn, setIsSigningIn] = useState(false);
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setError(null);
-      
-      // Verify email code
-      await confirmSignUp({ email, code });
-      
-      // Get stored password for auto-signin
-      const password = sessionStorage.getItem("pendingPassword");
-      
-      if (password) {
-        // Automatically sign in the user
-        setIsSigningIn(true);
-        try {
-          await signIn({ email, password });
-          
-          // Clean up password from sessionStorage (role stays in localStorage until user is synced)
-          sessionStorage.removeItem("pendingPassword");
-          // Note: pendingRole will be cleared by useAuth hook after getCurrentUser() succeeds
-          
-          toast.success("Email verified!", "Welcome! You've been signed in.");
-          router.push("/dashboard");
-        } catch (signInError: any) {
-          // If auto-signin fails, redirect to login page
-          sessionStorage.removeItem("pendingPassword");
-          const errorMessage = getErrorMessage(
-            signInError,
-            "Email verified, but sign in failed. Please sign in manually."
-          );
-          toast.warning("Email verified", errorMessage);
-          router.push("/login");
-        } finally {
-          setIsSigningIn(false);
-        }
-      } else {
-        // No password stored, redirect to login
-        toast.success("Email verified!", "You can now sign in to your account.");
-        router.push("/login");
-      }
-    } catch (err: any) {
-      const errorMessage = getErrorMessage(err, "Invalid verification code. Please try again.");
-      setError(errorMessage);
-      toast.error("Verification failed", errorMessage);
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-cf-beige-50 px-4 py-12">
-      <Card variant="default" className="w-full max-w-md">
-        <div className="space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-display font-bold uppercase">
-              Verify Email
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              We sent a verification code to {email}
-            </p>
-          </div>
-
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">Verification Code</Label>
-              <Input
-                id="code"
-                type="text"
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                disabled={isConfirmingSignUp}
-                maxLength={6}
-              />
-              {error && <ErrorMessage message={error} />}
-            </div>
-
-            <Button
-              type="submit"
-              variant="default"
-              className="w-full"
-              disabled={isConfirmingSignUp || isSigningIn || !code}
-            >
-              {isConfirmingSignUp || isSigningIn ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  {isConfirmingSignUp ? "Verifying..." : "Signing you in..."}
-                </>
-              ) : (
-                "Verify Email"
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={onBack}
-              disabled={isConfirmingSignUp}
-            >
-              Back
-            </Button>
-          </form>
         </div>
       </Card>
     </div>

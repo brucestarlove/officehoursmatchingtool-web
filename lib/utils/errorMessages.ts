@@ -2,7 +2,6 @@
  * Error Message Utility
  * 
  * Extracts user-friendly error messages from various error types:
- * - Cognito errors
  * - API/HTTP errors
  * - Generic errors
  */
@@ -58,32 +57,26 @@ export function getErrorMessage(error: unknown, fallback = "An unexpected error 
   if (error instanceof Error) {
     const message = error.message;
     
-    // Cognito-specific error messages
+    // Generic error messages
     if (message.includes("User does not exist")) {
       return "No account found with this email address.";
     }
-    if (message.includes("Incorrect username or password") || message.includes("NotAuthorizedException")) {
+    if (message.includes("Incorrect username or password") || message.includes("Invalid email or password")) {
       return "Invalid email or password. Please try again.";
     }
-    if (message.includes("UserNotConfirmedException")) {
-      return "Please verify your email address before signing in.";
-    }
-    if (message.includes("CodeMismatchException") || message.includes("Invalid verification code")) {
+    if (message.includes("Invalid verification code") || message.includes("verification code")) {
       return "Invalid verification code. Please check and try again.";
     }
-    if (message.includes("ExpiredCodeException")) {
+    if (message.includes("expired") && message.includes("code")) {
       return "Verification code has expired. Please request a new one.";
     }
-    if (message.includes("LimitExceededException")) {
+    if (message.includes("too many attempts") || message.includes("limit exceeded")) {
       return "Too many attempts. Please wait a moment and try again.";
     }
     if (message.includes("Password") && message.includes("requirements")) {
       return "Password does not meet requirements. Please use at least 8 characters with uppercase, lowercase, numbers, and symbols.";
     }
-    if (message.includes("custom:role") || message.includes("InvalidParameterException")) {
-      return "Sign up failed. Please contact support if this issue persists.";
-    }
-    if (message.includes("UsernameExistsException") || message.includes("already exists")) {
+    if (message.includes("already exists") || message.includes("email already")) {
       return "An account with this email already exists.";
     }
     if (message.includes("Network Error") || message.includes("ECONNREFUSED")) {
@@ -128,7 +121,6 @@ export function isAuthError(error: unknown): boolean {
   }
   if (error instanceof Error) {
     return (
-      error.message.includes("NotAuthorizedException") ||
       error.message.includes("Unauthorized") ||
       error.message.includes("401") ||
       error.message.includes("403")
