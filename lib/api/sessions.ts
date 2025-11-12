@@ -22,12 +22,7 @@ export async function bookSession(
  * List sessions for current user
  * GET /sessions
  */
-export async function listSessions(params?: {
-  status?: "upcoming" | "past" | "cancelled";
-  sort?: "date";
-  page?: number;
-  limit?: number;
-}): Promise<{
+export interface SessionsListResponse {
   sessions: Session[];
   pagination: {
     page: number;
@@ -35,8 +30,17 @@ export async function listSessions(params?: {
     total: number;
     totalPages: number;
   };
-}> {
-  const response = await apiClient.get("/sessions", { params });
+}
+
+export async function listSessions(params?: {
+  status?: "upcoming" | "past" | "cancelled";
+  sort?: "date";
+  page?: number;
+  limit?: number;
+}): Promise<SessionsListResponse> {
+  const response = await apiClient.get<SessionsListResponse>("/sessions", {
+    params,
+  });
   return response.data;
 }
 

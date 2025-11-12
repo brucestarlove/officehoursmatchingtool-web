@@ -46,21 +46,26 @@ export async function getMentorById(mentorId: string): Promise<Mentor> {
  * Get mentor availability
  * GET /availability/mentor/{id}
  */
+export interface MentorAvailabilityResponse {
+  availableSlots: TimeSlot[];
+  bookedSlots: TimeSlot[];
+  timezone: string;
+}
+
 export async function getMentorAvailability(
   mentorId: string,
   startDate?: string,
   endDate?: string
-): Promise<{
-  availableSlots: TimeSlot[];
-  bookedSlots: TimeSlot[];
-  timezone: string;
-}> {
-  const response = await apiClient.get(`/availability/mentor/${mentorId}`, {
-    params: {
-      startDate,
-      endDate,
-    },
-  });
+): Promise<MentorAvailabilityResponse> {
+  const response = await apiClient.get<MentorAvailabilityResponse>(
+    `/availability/mentor/${mentorId}`,
+    {
+      params: {
+        startDate,
+        endDate,
+      },
+    }
+  );
   return response.data;
 }
 
