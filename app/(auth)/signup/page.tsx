@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge-cf";
 import { logger } from "@/lib/utils/logger";
 import { useToast } from "@/lib/hooks/useToast";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
+import { getAuthFormDefaults, saveAuthFormState, clearAuthFormState } from "@/lib/utils/authFormState";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -33,7 +34,21 @@ export default function SignUpPage() {
     formState: { errors },
   } = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
+    defaultValues: getAuthFormDefaults(),
   });
+
+  const emailValue = watch("email");
+  const nameValue = watch("name");
+
+  // Save form fields to localStorage as user types
+  useEffect(() => {
+    if (emailValue || nameValue) {
+      saveAuthFormState({
+        email: emailValue || undefined,
+        name: nameValue || undefined,
+      });
+    }
+  }, [emailValue, nameValue]);
 
   const selectedRole = watch("role");
 
@@ -54,8 +69,14 @@ export default function SignUpPage() {
         },
       });
       
-      // Store role in localStorage to send to backend after email verification
+      // Store role and password temporarily for post-verification sign-in
+      // Role is stored in localStorage (persists until user is created in DB)
+      // Password is stored in sessionStorage (cleared on tab close) for better security
       localStorage.setItem("pendingRole", data.role);
+      sessionStorage.setItem("pendingPassword", data.password);
+      
+      // Clear form state on successful signup (keep email for verification step)
+      clearAuthFormState();
       
       setEmail(data.email);
       setShowVerification(true);
@@ -235,18 +256,52 @@ function VerificationStep({
   onBack: () => void;
 }) {
   const router = useRouter();
-  const { confirmSignUp, isConfirmingSignUp } = useAuth();
+  const { confirmSignUp, signIn, isConfirmingSignUp } = useAuth();
   const toast = useToast();
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isSigningIn, setIsSigningIn] = useState(false);
 
   const handleVerify = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
       setError(null);
+      
+      // Verify email code
       await confirmSignUp({ email, code });
-      toast.success("Email verified!", "You can now sign in to your account.");
-      router.push("/login");
+      
+      // Get stored password for auto-signin
+      const password = sessionStorage.getItem("pendingPassword");
+      
+      if (password) {
+        // Automatically sign in the user
+        setIsSigningIn(true);
+        try {
+          await signIn({ email, password });
+          
+          // Clean up password from sessionStorage (role stays in localStorage until user is synced)
+          sessionStorage.removeItem("pendingPassword");
+          // Note: pendingRole will be cleared by useAuth hook after getCurrentUser() succeeds
+          
+          toast.success("Email verified!", "Welcome! You've been signed in.");
+          router.push("/dashboard");
+        } catch (signInError: any) {
+          // If auto-signin fails, redirect to login page
+          sessionStorage.removeItem("pendingPassword");
+          const errorMessage = getErrorMessage(
+            signInError,
+            "Email verified, but sign in failed. Please sign in manually."
+          );
+          toast.warning("Email verified", errorMessage);
+          router.push("/login");
+        } finally {
+          setIsSigningIn(false);
+        }
+      } else {
+        // No password stored, redirect to login
+        toast.success("Email verified!", "You can now sign in to your account.");
+        router.push("/login");
+      }
     } catch (err: any) {
       const errorMessage = getErrorMessage(err, "Invalid verification code. Please try again.");
       setError(errorMessage);
@@ -286,12 +341,12 @@ function VerificationStep({
               type="submit"
               variant="default"
               className="w-full"
-              disabled={isConfirmingSignUp || !code}
+              disabled={isConfirmingSignUp || isSigningIn || !code}
             >
-              {isConfirmingSignUp ? (
+              {isConfirmingSignUp || isSigningIn ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Verifying...
+                  {isConfirmingSignUp ? "Verifying..." : "Signing you in..."}
                 </>
               ) : (
                 "Verify Email"

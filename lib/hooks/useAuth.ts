@@ -35,8 +35,21 @@ export function useAuth() {
       if (!session) {
         return null;
       }
-      // Then get user from backend
-      return getCurrentUser();
+      // Check if we have a pending role from signup (stored in localStorage)
+      // This is used to set the role for new users when custom:role isn't in Cognito
+      const pendingRole = typeof window !== 'undefined' 
+        ? localStorage.getItem('pendingRole') as "mentor" | "mentee" | null
+        : null;
+      
+      // Get user from backend, passing role if available
+      const user = await getCurrentUser(pendingRole || undefined);
+      
+      // Clear pending role after successful fetch (role is now set in database)
+      if (pendingRole && typeof window !== 'undefined') {
+        localStorage.removeItem('pendingRole');
+      }
+      
+      return user;
     },
     retry: QUERY_RETRY.NONE,
     staleTime: QUERY_STALE_TIMES.STANDARD,

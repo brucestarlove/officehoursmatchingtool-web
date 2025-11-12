@@ -12,7 +12,8 @@ import { useBookSession } from "@/lib/hooks/useSessions";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useToast } from "@/lib/hooks/useToast";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
-import type { TimeSlot, Mentor } from "@/types";
+import type { TimeSlot } from "@/types";
+import Image from "next/image";
 
 interface BookingFlowProps {
   mentorId: string;
@@ -157,8 +158,8 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
             <h3 className="mb-4 text-lg font-semibold">Mentor</h3>
             <div className="flex items-center gap-4">
               {mentor.profilePhoto ? (
-                <img
-                  src={mentor.profilePhoto}
+                <Image
+                  src={mentor.profilePhoto as string}
                   alt={mentor.name}
                   className="h-16 w-16 rounded-full"
                 />
