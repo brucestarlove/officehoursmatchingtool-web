@@ -75,3 +75,18 @@ export async function hasRole(role: string): Promise<boolean> {
   const user = await getCurrentUser();
   return user?.role === role;
 }
+
+/**
+ * Require admin or PM role - redirects to home if not admin/pm
+ * Returns full user from database
+ */
+export async function requireAdmin() {
+  const user = await requireAuth();
+  const adminRoles = ["admin", "pm"];
+
+  if (!adminRoles.includes(user.role || "")) {
+    redirect("/");
+  }
+
+  return user;
+}

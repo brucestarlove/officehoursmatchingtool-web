@@ -55,7 +55,7 @@ export async function GET() {
     };
 
     // Map to API response format
-    let profile = userWithProfile.role === "mentor" 
+    let profile: any = userWithProfile.role === "mentor" 
       ? userWithProfile.mentor 
       : userWithProfile.mentee;
 

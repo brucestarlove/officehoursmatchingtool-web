@@ -40,27 +40,43 @@ export async function GET(
       ? new Date(endDateParam)
       : new Date(Date.now() + 14 * 24 * 60 * 60 * 1000); // 2 weeks from now
 
-    // The id parameter is the email prefix (part before @)
-    // Look up mentor by matching user email prefix
-    const mentorResult = await db
-      .select({
-        mentor: mentors,
-      })
-      .from(mentors)
-      .innerJoin(users, eq(mentors.userId, users.id))
-      .where(
-        and(
-          eq(mentors.active, true),
-          sql`LOWER(SPLIT_PART(${users.email}, '@', 1)) = LOWER(${id})`
-        )
-      )
-      .limit(1);
+    // Look up mentor - id can be UUID or email prefix
+    let mentor;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
 
-    if (!mentorResult || mentorResult.length === 0) {
+    if (isUuid) {
+      // Direct UUID lookup
+      const mentorRecord = await db.query.mentors.findFirst({
+        where: and(eq(mentors.id, id), eq(mentors.active, true)),
+      });
+      if (mentorRecord) {
+        mentor = mentorRecord;
+      }
+    } else {
+      // Email prefix lookup (like in mentors/[id] endpoint)
+      const mentorResult = await db
+        .select({
+          mentor: mentors,
+        })
+        .from(mentors)
+        .innerJoin(users, eq(mentors.userId, users.id))
+        .where(
+          and(
+            eq(mentors.active, true),
+            sql`LOWER(SPLIT_PART(${users.email}, '@', 1)) = LOWER(${id})`
+          )
+        )
+        .limit(1);
+
+      if (mentorResult && mentorResult.length > 0) {
+        mentor = mentorResult[0].mentor;
+      }
+    }
+
+    if (!mentor) {
       return createNotFoundResponse("Mentor");
     }
 
-    const mentor = mentorResult[0].mentor;
     const mentorId = mentor.id;
 
     // Fetch availability records in date range

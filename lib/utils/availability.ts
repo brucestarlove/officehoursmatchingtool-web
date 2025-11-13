@@ -5,7 +5,7 @@
 import type { TimeSlot } from "@/types";
 import { db } from "@/lib/db";
 import { availability, officeSessions } from "@/lib/db/schema";
-import { and, eq, gte, lte, or, lt, gt } from "drizzle-orm";
+import { and, eq, gte, lte, or, lt, gt, sql, ne } from "drizzle-orm";
 import { logger } from "@/lib/utils/logger";
 
 /**
@@ -14,13 +14,29 @@ import { logger } from "@/lib/utils/logger";
  * 
  * Note: This function assumes the slot exists in availability blocks.
  * Callers should verify availability separately.
+ * 
+ * @param excludeSessionId - Optional session ID to exclude from conflict check (useful for rescheduling)
  */
 export async function checkAvailabilityConflict(
   mentorId: string,
   startTime: Date,
-  endTime: Date
+  endTime: Date,
+  excludeSessionId?: string
 ): Promise<boolean> {
   try {
+    // Build conditions for overlapping sessions
+    const conditions = [
+      eq(officeSessions.mentorId, mentorId),
+      eq(officeSessions.status, "scheduled"), // Only check scheduled sessions
+      lt(officeSessions.startsAt, endTime),
+      gt(officeSessions.endsAt, startTime),
+    ];
+
+    // Exclude the specified session ID (for rescheduling)
+    if (excludeSessionId) {
+      conditions.push(ne(officeSessions.id, excludeSessionId));
+    }
+
     // Check for overlapping booked sessions
     // A conflict exists if:
     // - Session starts before our end time AND
@@ -28,14 +44,7 @@ export async function checkAvailabilityConflict(
     const overlappingSessions = await db
       .select()
       .from(officeSessions)
-      .where(
-        and(
-          eq(officeSessions.mentorId, mentorId),
-          eq(officeSessions.status, "scheduled"), // Only check scheduled sessions
-          lt(officeSessions.startsAt, endTime),
-          gt(officeSessions.endsAt, startTime)
-        )
-      )
+      .where(and(...conditions))
       .limit(1);
 
     const hasConflict = overlappingSessions.length > 0;
@@ -46,6 +55,7 @@ export async function checkAvailabilityConflict(
         startTime: startTime.toISOString(),
         endTime: endTime.toISOString(),
         conflictingSessions: overlappingSessions.length,
+        excludeSessionId,
       });
     }
 
@@ -55,6 +65,7 @@ export async function checkAvailabilityConflict(
       mentorId,
       startTime: startTime.toISOString(),
       endTime: endTime.toISOString(),
+      excludeSessionId,
     });
     // On error, assume conflict to prevent double-booking
     throw error;

@@ -22,7 +22,11 @@ import {
 } from "@/lib/utils/api-errors";
 import type { Session } from "@/types";
 import type { SessionStatus } from "@/lib/constants/sessions";
-import { checkAvailabilityConflict } from "@/lib/utils/availability";
+import {
+  checkAvailabilityConflict,
+  checkSlotExistsInAvailability,
+} from "@/lib/utils/availability";
+import { logger } from "@/lib/utils/logger";
 import { z } from "zod";
 
 const rescheduleSchema = z.object({
@@ -180,16 +184,78 @@ export async function PUT(
       newStartTime.getTime() + session.duration * 60 * 1000
     );
 
-    // Check availability for new time
-    const hasConflict = await checkAvailabilityConflict(
-      session.mentorId,
-      newStartTime,
-      newEndTime
-    );
+    logger.info("Rescheduling session", {
+      sessionId: id,
+      mentorId: session.mentorId,
+      oldStartTime: session.startsAt.toISOString(),
+      newStartTime: newStartTime.toISOString(),
+    });
+
+    // Validate that the new time slot exists in mentor's availability
+    let slotExists = false;
+    try {
+      slotExists = await checkSlotExistsInAvailability(
+        session.mentorId,
+        newStartTime,
+        newEndTime
+      );
+    } catch (error) {
+      logger.error("Error checking slot availability for reschedule", error, {
+        sessionId: id,
+        mentorId: session.mentorId,
+        newStartTime: newStartTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error("Failed to verify slot availability. Please try again."),
+        500
+      );
+    }
+
+    if (!slotExists) {
+      logger.warn("Slot does not exist in availability for reschedule", {
+        sessionId: id,
+        mentorId: session.mentorId,
+        newStartTime: newStartTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error(
+          "The selected time slot is not available. Please choose a different time."
+        ),
+        409
+      );
+    }
+
+    // Check for conflicts with existing bookings (excluding current session)
+    let hasConflict = false;
+    try {
+      hasConflict = await checkAvailabilityConflict(
+        session.mentorId,
+        newStartTime,
+        newEndTime,
+        id // Exclude current session from conflict check
+      );
+    } catch (error) {
+      logger.error("Error checking availability conflict for reschedule", error, {
+        sessionId: id,
+        mentorId: session.mentorId,
+        newStartTime: newStartTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error("Failed to check for booking conflicts. Please try again."),
+        500
+      );
+    }
 
     if (hasConflict) {
+      logger.warn("Reschedule conflict detected", {
+        sessionId: id,
+        mentorId: session.mentorId,
+        newStartTime: newStartTime.toISOString(),
+      });
       return createErrorResponse(
-        new Error("New time slot is not available or conflicts with existing booking"),
+        new Error(
+          "This time slot has already been booked. Please select another time."
+        ),
         409
       );
     }
