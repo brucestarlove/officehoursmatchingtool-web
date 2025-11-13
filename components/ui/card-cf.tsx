@@ -8,7 +8,7 @@ const cardVariants = cva(
     variants: {
       variant: {
         default: "bg-white border border-gray-200 shadow-md",
-        beige: "bg-cf-beige-50 border border-cf-beige-300 shadow-sm",
+        beige: "bg-cf-beige-50 border border-cf-beige-300 shadow-xs",
         "yellow-border":
           "bg-white border-2 border-cf-yellow-500 shadow-cf-yellow",
         "teal-border": "bg-white border-2 border-cf-teal-500 shadow-cf-teal",

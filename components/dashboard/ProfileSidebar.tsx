@@ -32,6 +32,7 @@ export function ProfileSidebar() {
 
   const isMentor = profile.role === "mentor";
   const profileData = profile.profile;
+  const hasProfile = !!profileData;
 
   return (
     <Card variant="default" className="p-6">
@@ -67,8 +68,8 @@ export function ProfileSidebar() {
           )}
         </div>
 
-        {/* Role-specific info */}
-        {isMentor && profileData && "headline" in profileData && (
+        {/* Role-specific info - Only show if profile exists */}
+        {hasProfile && isMentor && profileData && "headline" in profileData && (
           <div className="space-y-2">
             {(() => {
               const headline = profileData.headline;
@@ -98,7 +99,7 @@ export function ProfileSidebar() {
           </div>
         )}
 
-        {!isMentor && profileData && "goals" in profileData && (
+        {hasProfile && !isMentor && profileData && "goals" in profileData && (
           <div className="space-y-2">
             {(() => {
               const company = "company" in profileData ? profileData.company : undefined;
@@ -127,10 +128,19 @@ export function ProfileSidebar() {
           </div>
         )}
 
-        {/* View Profile Button */}
+        {/* Profile creation prompt if no profile */}
+        {!hasProfile && (
+          <div className="rounded-lg bg-cf-yellow-50 border border-cf-yellow-200 p-3 text-center">
+            <p className="text-sm text-cf-yellow-900">
+              Complete your profile to get started!
+            </p>
+          </div>
+        )}
+
+        {/* View Profile / Create Profile Button */}
         <Link href="/profile">
           <Button variant="default" className="w-full">
-            View Profile
+            {hasProfile ? "View Profile" : "Create Your Profile!"}
           </Button>
         </Link>
       </div>

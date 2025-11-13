@@ -8,6 +8,7 @@ import { QUERY_STALE_TIMES, QUERY_RETRY } from "@/lib/constants/query";
 import { logger } from "@/lib/utils/logger";
 
 const PROFILE_QUERY_KEY = ["profile", "me"];
+const AUTH_QUERY_KEY = ["auth", "user"];
 
 /**
  * Hook to fetch and update current user profile
@@ -42,9 +43,12 @@ export function useProfile() {
       return response.data;
     },
     onSuccess: (updatedProfile) => {
-      // Invalidate and refetch profile
+      // Invalidate and refetch both profile and auth queries
+      // This ensures the dashboard updates immediately after profile creation
       queryClient.invalidateQueries({ queryKey: PROFILE_QUERY_KEY });
+      queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
       queryClient.setQueryData(PROFILE_QUERY_KEY, updatedProfile);
+      queryClient.setQueryData(AUTH_QUERY_KEY, updatedProfile);
     },
     onError: (error) => {
       logger.error("Profile update failed", error, { context: "useProfile.updateMutation" });

@@ -88,7 +88,20 @@ export async function signUp(
   email: string,
   password: string,
   name?: string,
-  role?: "mentor" | "mentee"
+  role?: "mentor" | "mentee",
+  profileData?: {
+    // Mentor fields
+    headline?: string;
+    bio?: string;
+    company?: string;
+    title?: string;
+    industry?: string;
+    stage?: string;
+    timezone?: string;
+    expertise?: string[];
+    // Mentee fields
+    goals?: string;
+  }
 ): Promise<SignUpResult> {
   try {
     // Call our custom signup API endpoint
@@ -97,7 +110,13 @@ export async function signUp(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ email, password, name, role }),
+      body: JSON.stringify({
+        email,
+        password,
+        name,
+        role,
+        ...profileData,
+      }),
     });
 
     const data = await response.json();

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-cf";
 import { Button } from "@/components/ui/button-cf";
@@ -8,16 +9,18 @@ import { MentorCard } from "@/components/match/MentorCard";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useMatchMentors } from "@/lib/hooks/useMentors";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 
 interface MentorSuggestionsProps {
   limit?: number;
+  hasProfile?: boolean;
 }
 
 /**
  * Carousel of suggested mentors based on past searches and feedback
  */
-export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
+export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSuggestionsProps) {
+  const router = useRouter();
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [touchStart, setTouchStart] = useState<number | null>(null);
@@ -26,6 +29,11 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
 
   // Minimum swipe distance (in pixels)
   const minSwipeDistance = 50;
+
+  // Handle Book Session button click - navigate to booking page
+  const handleBookClick = (mentorId: string) => {
+    router.push(`/sessions/book?mentorId=${mentorId}`);
+  };
 
   // Get suggestions based on user's goals/interests and feedback history
   // Safely handle goals which might be an array, string, null, or undefined
@@ -63,13 +71,37 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
   const suggestionQuery = getGoalsString();
 
   // Enhanced filters: incorporate feedback data if available
+  // Only fetch mentors if user has a profile
   const { data: matchData, isLoading } = useMatchMentors({
-    query: suggestionQuery,
+    query: hasProfile ? suggestionQuery : "", // Empty query if no profile
     filters: {
       minRating: 4, // Prefer highly rated mentors
       pastInteractions: "new-mentors-only", // Suggest new mentors by default
     },
   });
+
+  // Show message if user hasn't created profile yet (check before loading state)
+  if (!hasProfile) {
+    return (
+      <Card variant="default">
+        <CardHeader>
+          <CardTitle>Mentors You Might Like</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="py-8 text-center">
+            <p className="text-sm text-muted-foreground mb-4">
+              Complete your profile to see personalized mentor suggestions based on your goals and interests.
+            </p>
+            <Link href="/profile">
+              <Button variant="default">
+                Create Your Profile!
+              </Button>
+            </Link>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -156,6 +188,7 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
                     mentor={mentor}
                     matchExplanation={matchData?.matchExplanations[mentor.id]}
                     showMatchReason={true}
+                    onBookClick={handleBookClick}
                   />
                 </div>
               ))}

@@ -501,6 +501,17 @@ export async function POST(request: NextRequest) {
       menteeId: validated.menteeId,
     });
 
+    // Send confirmation emails (don't block response if email fails)
+    try {
+      const { sendSessionConfirmationEmails } = await import("@/lib/email/send");
+      await sendSessionConfirmationEmails(sessionResponse);
+    } catch (emailError) {
+      logger.error("Failed to send confirmation emails", emailError, {
+        sessionId: sessionResponse.id,
+      });
+      // Continue - email failure shouldn't break the booking
+    }
+
     return NextResponse.json({
       session: sessionResponse,
       calendarEvent: {

@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card-cf";
 import { Button } from "@/components/ui/button-cf";
 import { UpcomingSessions } from "@/components/dashboard/UpcomingSessions";
 import { MentorSuggestions } from "@/components/dashboard/MentorSuggestions";
+import { MenteeSuggestions } from "@/components/dashboard/MenteeSuggestions";
 import {
   SessionsThisMonthCard,
   AverageRatingCard,
@@ -29,6 +30,9 @@ function DashboardContent() {
 
   // Check if user is admin or PM
   const isAdmin = user?.role === "admin" || user?.role === "pm";
+  
+  // Check if user has created their profile (mentor/mentee record)
+  const hasProfile = !!user?.profile;
 
   // Calculate stats (mock for now - would come from API)
   const sessionsThisMonth = sessionsData?.sessions.length || 0;
@@ -65,8 +69,9 @@ function DashboardContent() {
           </Button>
         </div>
 
-        {/* Stats Cards - Mentor Only */}
-        {user?.role === "mentor" && (
+
+        {/* Stats Cards - Mentor Only (show only if profile exists) */}
+        {user?.role === "mentor" && hasProfile && (
           <div className="grid gap-6 md:grid-cols-3">
             <SessionsThisMonthCard count={sessionsThisMonth} />
             {averageRating !== undefined && (
@@ -121,15 +126,21 @@ function DashboardContent() {
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <UpcomingSessions limit={5} />
-            
-            {/* Mentor Suggestions - Mentee Only */}
-            {user?.role === "mentee" && <MentorSuggestions limit={3} />}
-          </div>
+          {!isAdmin && (
+            <div className="lg:col-span-2 space-y-6">
+              {/* Upcoming Sessions - Only show if profile exists */}
+              {hasProfile && <UpcomingSessions limit={5} />}
+              
+              {/* Mentor Suggestions - Mentee Only, show even without profile but with message */}
+              {user?.role === "mentee" && <MentorSuggestions limit={3} hasProfile={hasProfile} />}
+              
+              {/* Mentee Suggestions - Mentor Only, show even without profile but with message */}
+              {user?.role === "mentor" && <MenteeSuggestions limit={3} hasProfile={hasProfile} />}
+            </div>
+          )}
 
           {/* Right Column - Profile & Quick Actions */}
-          <div className="space-y-6">
+          <div className={`space-y-6 ${isAdmin ? "lg:col-span-3" : ""}`}>
             {/* Profile Sidebar */}
             <ProfileSidebar />
 
@@ -157,26 +168,36 @@ function DashboardContent() {
               </Card>
             )}
 
-            {/* Quick Actions */}
-            <Card variant="default" className="p-6">
-              <h3 className="mb-4 text-lg font-semibold">Quick Actions</h3>
-              <div className="space-y-2">
-                {user?.role === "mentee" && (
-                  <Link href="/match">
-                    <Button variant="default" className="w-full">
-                      Find a Mentor
-                    </Button>
-                  </Link>
-                )}
-                {user?.role === "mentor" && (
-                  <Link href="/mentor/availability">
-                    <Button variant="secondary" className="w-full">
-                      Update Availability
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            </Card>
+            {/* Quick Actions - Hidden for Admin */}
+            {!isAdmin && (
+              <Card variant="default" className="p-6">
+                <h3 className="mb-4 text-lg font-semibold">Quick Actions</h3>
+                <div className="space-y-2">
+                  {user?.role === "mentee" && (
+                    <Link href={hasProfile ? "/match" : "/profile"}>
+                      <Button 
+                        variant={hasProfile ? "default" : "secondary"} 
+                        className="w-full"
+                        disabled={!hasProfile}
+                      >
+                        {hasProfile ? "Find a Mentor" : "Create Profile to Find Mentors"}
+                      </Button>
+                    </Link>
+                  )}
+                  {user?.role === "mentor" && (
+                    <Link href={hasProfile ? "/mentor/availability" : "/profile"}>
+                      <Button 
+                        variant={hasProfile ? "secondary" : "default"} 
+                        className="w-full"
+                        disabled={!hasProfile}
+                      >
+                        {hasProfile ? "Update Availability" : "Create Profile to Set Availability"}
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>

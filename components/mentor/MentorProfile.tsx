@@ -174,6 +174,7 @@ export function MentorProfile({
           timezone={timezone}
           onSlotSelect={onSlotSelect}
           selectedSlot={selectedSlot}
+          onBookClick={onBookClick}
         />
       )}
 
@@ -184,15 +185,6 @@ export function MentorProfile({
           averageRating={mentor.rating}
           reviewCount={mentor.reviewCount}
         />
-      )}
-
-      {/* Sticky Book Button */}
-      {onBookClick && (
-        <div className="sticky bottom-0 z-10 border-t bg-white p-4 shadow-lg md:hidden">
-          <Button variant="default" className="w-full" onClick={onBookClick}>
-            Book Session
-          </Button>
-        </div>
       )}
     </div>
   );

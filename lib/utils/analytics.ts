@@ -1,337 +1,440 @@
 /**
- * Analytics aggregation utilities
- * Functions for calculating platform metrics and trends
+ * Analytics utilities for computing mentor metrics
+ * Used for syncing computed fields to Airtable and admin dashboards
  */
 
-import { sql } from "drizzle-orm";
-import type { InferSelectModel } from "drizzle-orm";
-import { officeSessions, availability, reviews, mentors } from "@/lib/db/schema";
-import type { db } from "@/lib/db";
+import { db } from "@/lib/db";
+import { mentors, officeSessions, reviews, availability, users } from "@/lib/db/schema";
+import { eq, and, gte, lte, sql, ne } from "drizzle-orm";
+import type { NodePgDatabase } from "drizzle-orm/node-postgres";
+import type * as schema from "@/lib/db/schema";
 
-type GroupByPeriod = "day" | "week" | "month";
-
-export interface TimeSeriesData {
-  date: string;
-  value: number;
-  label?: string;
-}
-
-export interface MentorUtilization {
-  mentorId: string;
-  mentorName: string;
-  totalAvailableHours: number;
-  bookedHours: number;
-  utilizationRate: number;
-  sessionCount: number;
-}
-
-export interface RatingDistribution {
-  rating: number;
-  count: number;
-  percentage: number;
-}
+type Database = NodePgDatabase<typeof schema>;
 
 /**
- * Aggregate sessions over time by period
+ * Calculate mentor utilization percentage
+ * Utilization = (booked sessions / available slots) * 100
+ * 
+ * @param mentorId - Mentor ID
+ * @param days - Number of days to look back (default: 30)
+ * @returns Utilization percentage (0-100)
  */
-export async function aggregateSessionsOverTime(
-  dbInstance: typeof db,
-  startDate: Date,
-  endDate: Date,
-  groupBy: GroupByPeriod = "day"
-): Promise<TimeSeriesData[]> {
-  let dateFormat: string;
-  let dateTrunc: string;
+export async function calculateMentorUtilization(
+  mentorId: string,
+  days: number = 30
+): Promise<number> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
 
-  switch (groupBy) {
-    case "day":
-      dateFormat = "YYYY-MM-DD";
-      dateTrunc = "day";
-      break;
-    case "week":
-      dateFormat = "YYYY-\"W\"WW";
-      dateTrunc = "week";
-      break;
-    case "month":
-      dateFormat = "YYYY-MM";
-      dateTrunc = "month";
-      break;
-    default:
-      dateFormat = "YYYY-MM-DD";
-      dateTrunc = "day";
-  }
-
-  const result = await dbInstance
+  // Get total available slots in the time period
+  const availableSlots = await db
     .select({
-      date: sql<string>`TO_CHAR(DATE_TRUNC(${sql.raw(`'${dateTrunc}'`)}, ${officeSessions.startsAt}), ${sql.raw(`'${dateFormat}'`)})`,
-      value: sql<number>`COUNT(*)::int`,
+      total: sql<number>`COALESCE(SUM(${availability.capacity}), 0)`,
+    })
+    .from(availability)
+    .where(
+      and(
+        eq(availability.mentorId, mentorId),
+        gte(availability.startsAt, cutoffDate)
+      )
+    );
+
+  const totalAvailable = Number(availableSlots[0]?.total || 0);
+
+  // Get booked sessions in the time period
+  const bookedSessions = await db
+    .select({
+      count: sql<number>`COUNT(*)`,
     })
     .from(officeSessions)
     .where(
-      sql`${officeSessions.startsAt} >= ${startDate} AND ${officeSessions.startsAt} <= ${endDate}`
-    )
-    .groupBy(sql`DATE_TRUNC(${sql.raw(`'${dateTrunc}'`)}, ${officeSessions.startsAt})`)
-    .orderBy(sql`DATE_TRUNC(${sql.raw(`'${dateTrunc}'`)}, ${officeSessions.startsAt})`);
+      and(
+        eq(officeSessions.mentorId, mentorId),
+        gte(officeSessions.startsAt, cutoffDate),
+        sql`${officeSessions.status} IN ('scheduled', 'completed')`
+      )
+    );
 
-  return result.map((row) => ({
-    date: row.date,
-    value: row.value,
-  }));
+  const totalBooked = Number(bookedSessions[0]?.count || 0);
+
+  // Calculate utilization percentage
+  if (totalAvailable === 0) {
+    return 0;
+  }
+
+  return Math.round((totalBooked / totalAvailable) * 100 * 10) / 10; // Round to 1 decimal place
 }
 
 /**
- * Calculate mentor utilization rate
- * Utilization = (booked hours / available hours) * 100
+ * Calculate average feedback rating for a mentor
+ * 
+ * @param mentorId - Mentor ID
+ * @param days - Number of days to look back (default: 90)
+ * @returns Average rating (0-5), or null if no reviews
+ */
+export async function calculateAvgFeedback(
+  mentorId: string,
+  days: number = 90
+): Promise<number | null> {
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - days);
+
+  const avgRating = await db
+    .select({
+      avg: sql<number>`COALESCE(AVG(${reviews.rating}), 0)`,
+    })
+    .from(reviews)
+    .where(
+      and(
+        eq(reviews.mentorId, mentorId),
+        gte(reviews.createdAt, cutoffDate)
+      )
+    );
+
+  const avg = Number(avgRating[0]?.avg || 0);
+
+  // Return null if no reviews (avg would be 0)
+  if (avg === 0) {
+    // Check if there are actually any reviews
+    const reviewCount = await db
+      .select({
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(reviews)
+      .where(
+        and(
+          eq(reviews.mentorId, mentorId),
+          gte(reviews.createdAt, cutoffDate)
+        )
+      );
+
+    if (Number(reviewCount[0]?.count || 0) === 0) {
+      return null;
+    }
+  }
+
+  return Math.round(avg * 10) / 10; // Round to 1 decimal place
+}
+
+/**
+ * Calculate utilization rate for a single mentor within a date range
+ * Used by admin routes
  */
 export async function calculateUtilizationRate(
-  dbInstance: typeof db,
+  dbInstance: Database,
   mentorId: string,
   startDate: Date,
   endDate: Date
 ): Promise<number> {
-  // Calculate booked hours from sessions
-  const bookedHoursResult = await dbInstance
+  // Get total available slots in the time period
+  const availableSlots = await dbInstance
     .select({
-      totalMinutes: sql<number>`COALESCE(SUM(${officeSessions.duration}), 0)::int`,
-    })
-    .from(officeSessions)
-    .where(
-      sql`${officeSessions.mentorId} = ${mentorId} 
-          AND ${officeSessions.startsAt} >= ${startDate} 
-          AND ${officeSessions.startsAt} <= ${endDate}
-          AND ${officeSessions.status} != 'cancelled'`
-    );
-
-  const bookedMinutes = bookedHoursResult[0]?.totalMinutes || 0;
-  const bookedHours = bookedMinutes / 60;
-
-  // Calculate available hours from availability table
-  const availableHoursResult = await dbInstance
-    .select({
-      totalMinutes: sql<number>`COALESCE(
-        SUM(EXTRACT(EPOCH FROM (${availability.endsAt} - ${availability.startsAt})) / 60), 
-        0
-      )::int`,
+      total: sql<number>`COALESCE(SUM(${availability.capacity}), 0)`,
     })
     .from(availability)
     .where(
-      sql`${availability.mentorId} = ${mentorId} 
-          AND ${availability.startsAt} >= ${startDate} 
-          AND ${availability.endsAt} <= ${endDate}`
+      and(
+        eq(availability.mentorId, mentorId),
+        gte(availability.startsAt, startDate),
+        lte(availability.startsAt, endDate)
+      )
     );
 
-  const availableMinutes = availableHoursResult[0]?.totalMinutes || 0;
-  const availableHours = availableMinutes / 60;
+  const totalAvailable = Number(availableSlots[0]?.total || 0);
 
-  if (availableHours === 0) {
+  // Get booked sessions in the time period
+  const bookedSessions = await dbInstance
+    .select({
+      count: sql<number>`COUNT(*)`,
+    })
+    .from(officeSessions)
+    .where(
+      and(
+        eq(officeSessions.mentorId, mentorId),
+        gte(officeSessions.startsAt, startDate),
+        lte(officeSessions.startsAt, endDate),
+        sql`${officeSessions.status} IN ('scheduled', 'completed')`
+      )
+    );
+
+  const totalBooked = Number(bookedSessions[0]?.count || 0);
+
+  // Calculate utilization percentage
+  if (totalAvailable === 0) {
     return 0;
   }
 
-  return Math.round((bookedHours / availableHours) * 100 * 100) / 100; // Round to 2 decimal places
+  return Math.round((totalBooked / totalAvailable) * 100 * 100) / 100; // Round to 2 decimal places
 }
 
 /**
  * Calculate utilization for all mentors
  */
 export async function calculateAllMentorUtilization(
-  dbInstance: typeof db,
+  dbInstance: Database,
   startDate: Date,
   endDate: Date
-): Promise<MentorUtilization[]> {
-  // Get all mentors with their user info
+): Promise<
+  Array<{
+    mentorId: string;
+    mentorName: string;
+    utilizationRate: number;
+    sessionCount: number;
+    totalAvailableHours: number;
+    bookedHours: number;
+  }>
+> {
   const allMentors = await dbInstance.query.mentors.findMany({
     with: {
       user: true,
     },
   });
 
-  // Get booked hours per mentor
-  const bookedData = await dbInstance
-    .select({
-      mentorId: officeSessions.mentorId,
-      bookedMinutes: sql<number>`COALESCE(SUM(${officeSessions.duration}), 0)::int`,
-      sessionCount: sql<number>`COUNT(*)::int`,
-    })
-    .from(officeSessions)
-    .where(
-      sql`${officeSessions.startsAt} >= ${startDate} 
-          AND ${officeSessions.startsAt} <= ${endDate}
-          AND ${officeSessions.status} != 'cancelled'`
-    )
-    .groupBy(officeSessions.mentorId);
+  const utilizationPromises = allMentors.map(async (mentor) => {
+    // Get total available slots
+    const availableSlots = await dbInstance
+      .select({
+        total: sql<number>`COALESCE(SUM(${availability.capacity}), 0)`,
+      })
+      .from(availability)
+      .where(
+        and(
+          eq(availability.mentorId, mentor.id),
+          gte(availability.startsAt, startDate),
+          lte(availability.startsAt, endDate)
+        )
+      );
 
-  // Get available hours per mentor
-  const availabilityData = await dbInstance
-    .select({
-      mentorId: availability.mentorId,
-      availableMinutes: sql<number>`COALESCE(
-        SUM(EXTRACT(EPOCH FROM (${availability.endsAt} - ${availability.startsAt})) / 60), 
-        0
-      )::int`,
-    })
-    .from(availability)
-    .where(
-      sql`${availability.startsAt} >= ${startDate} 
-          AND ${availability.endsAt} <= ${endDate}`
-    )
-    .groupBy(availability.mentorId);
+    const totalAvailableHours = Number(availableSlots[0]?.total || 0);
 
-  const bookedMap = new Map(
-    bookedData.map((b) => [b.mentorId, { minutes: b.bookedMinutes, count: b.sessionCount }])
-  );
-  const availabilityMap = new Map(
-    availabilityData.map((a) => [a.mentorId, a.availableMinutes / 60])
-  );
+    // Get booked sessions
+    const bookedSessions = await dbInstance
+      .select({
+        count: sql<number>`COUNT(*)`,
+      })
+      .from(officeSessions)
+      .where(
+        and(
+          eq(officeSessions.mentorId, mentor.id),
+          gte(officeSessions.startsAt, startDate),
+          lte(officeSessions.startsAt, endDate),
+          sql`${officeSessions.status} IN ('scheduled', 'completed')`
+        )
+      );
 
-  return allMentors.map((mentor) => {
-    const booked = bookedMap.get(mentor.id) || { minutes: 0, count: 0 };
-    const bookedHours = booked.minutes / 60;
-    const availableHours = availabilityMap.get(mentor.id) || 0;
+    const bookedHours = Number(bookedSessions[0]?.count || 0);
     const utilizationRate =
-      availableHours > 0 ? Math.round((bookedHours / availableHours) * 100 * 100) / 100 : 0;
+      totalAvailableHours > 0
+        ? Math.round((bookedHours / totalAvailableHours) * 100 * 100) / 100
+        : 0;
 
     return {
       mentorId: mentor.id,
       mentorName: mentor.user?.name || "Unknown",
-      totalAvailableHours: availableHours,
-      bookedHours: bookedHours,
-      utilizationRate: utilizationRate,
-      sessionCount: booked.count,
+      utilizationRate,
+      sessionCount: bookedHours,
+      totalAvailableHours,
+      bookedHours,
     };
   });
+
+  return Promise.all(utilizationPromises);
 }
 
 /**
- * Aggregate feedback distribution by rating
+ * Aggregate sessions over time periods
  */
-export async function aggregateFeedbackDistribution(
-  dbInstance: typeof db,
-  startDate?: Date,
-  endDate?: Date
-): Promise<RatingDistribution[]> {
-  let query = dbInstance
-    .select({
-      rating: reviews.rating,
-      count: sql<number>`COUNT(*)::int`,
-    })
-    .from(reviews);
+export async function aggregateSessionsOverTime(
+  dbInstance: Database,
+  startDate: Date,
+  endDate: Date,
+  groupBy: "day" | "week" | "month" = "day"
+): Promise<Array<{ date: string; count: number }>> {
+  let dateFormat: string;
+  let interval: string;
 
-  if (startDate && endDate) {
-    query = query.where(
-      sql`${reviews.createdAt} >= ${startDate} AND ${reviews.createdAt} <= ${endDate}`
-    ) as typeof query;
+  switch (groupBy) {
+    case "day":
+      dateFormat = "YYYY-MM-DD";
+      interval = "1 day";
+      break;
+    case "week":
+      dateFormat = "IYYY-IW"; // ISO week format
+      interval = "1 week";
+      break;
+    case "month":
+      dateFormat = "YYYY-MM";
+      interval = "1 month";
+      break;
+    default:
+      dateFormat = "YYYY-MM-DD";
+      interval = "1 day";
   }
 
-  const result = await query.groupBy(reviews.rating).orderBy(reviews.rating);
+  // Use Drizzle query builder with sql.raw for date formatting
+  const sessions = await dbInstance
+    .select({
+      date: sql<string>`TO_CHAR(${officeSessions.startsAt}, ${sql.raw(`'${dateFormat}'`)})`,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(officeSessions)
+    .where(
+      and(
+        gte(officeSessions.startsAt, startDate),
+        lte(officeSessions.startsAt, endDate),
+        ne(officeSessions.status, "cancelled")
+      )
+    )
+    .groupBy(sql`TO_CHAR(${officeSessions.startsAt}, ${sql.raw(`'${dateFormat}'`)})`)
+    .orderBy(sql`TO_CHAR(${officeSessions.startsAt}, ${sql.raw(`'${dateFormat}'`)})`);
 
-  // Calculate total for percentage
-  const total = result.reduce((sum, item) => sum + item.count, 0);
-
-  return result.map((item) => ({
-    rating: item.rating,
-    count: item.count,
-    percentage: total > 0 ? Math.round((item.count / total) * 100 * 100) / 100 : 0,
+  return sessions.map((s) => ({
+    date: s.date,
+    count: Number(s.count || 0),
   }));
 }
 
 /**
- * Calculate engagement metrics for mentors and mentees
+ * Aggregate feedback distribution
  */
-export interface EngagementMetrics {
-  mentorEngagement: {
-    high: number; // > 10 sessions
-    medium: number; // 5-10 sessions
-    low: number; // < 5 sessions
-  };
-  menteeEngagement: {
-    high: number; // > 5 sessions
-    medium: number; // 2-5 sessions
-    low: number; // < 2 sessions
-  };
-  powerUsers: {
-    mentors: string[];
-    mentees: string[];
-  };
-}
-
-export async function calculateEngagementMetrics(
-  dbInstance: typeof db,
+export async function aggregateFeedbackDistribution(
+  dbInstance: Database,
   startDate: Date,
   endDate: Date
-): Promise<EngagementMetrics> {
-  // Mentor engagement
+): Promise<Array<{ rating: number; count: number; percentage: number }>> {
+  const distribution = await dbInstance
+    .select({
+      rating: reviews.rating,
+      count: sql<number>`COUNT(*)::int`,
+    })
+    .from(reviews)
+    .where(
+      and(gte(reviews.createdAt, startDate), lte(reviews.createdAt, endDate))
+    )
+    .groupBy(reviews.rating)
+    .orderBy(reviews.rating);
+
+  const total = distribution.reduce((sum, d) => sum + Number(d.count || 0), 0);
+
+  return distribution.map((d) => ({
+    rating: Number(d.rating),
+    count: Number(d.count || 0),
+    percentage: total > 0 ? Math.round((Number(d.count || 0) / total) * 10000) / 100 : 0,
+  }));
+}
+
+/**
+ * Calculate engagement metrics
+ */
+export async function calculateEngagementMetrics(
+  dbInstance: Database,
+  startDate: Date,
+  endDate: Date
+): Promise<{
+  averageSessionsPerMentor: number;
+  averageSessionsPerMentee: number;
+  repeatMenteeRate: number;
+  mentorRetentionRate: number;
+}> {
+  // Average sessions per mentor
   const mentorSessions = await dbInstance
     .select({
       mentorId: officeSessions.mentorId,
-      sessionCount: sql<number>`COUNT(*)::int`,
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(officeSessions)
     .where(
-      sql`${officeSessions.startsAt} >= ${startDate} 
-          AND ${officeSessions.startsAt} <= ${endDate}`
+      and(
+        gte(officeSessions.startsAt, startDate),
+        lte(officeSessions.startsAt, endDate),
+        ne(officeSessions.status, "cancelled")
+      )
     )
     .groupBy(officeSessions.mentorId);
 
-  let mentorHigh = 0;
-  let mentorMedium = 0;
-  let mentorLow = 0;
-  const powerMentors: string[] = [];
+  const uniqueMentors = mentorSessions.length;
+  const totalMentorSessions = mentorSessions.reduce(
+    (sum, m) => sum + Number(m.count || 0),
+    0
+  );
+  const averageSessionsPerMentor =
+    uniqueMentors > 0 ? Math.round((totalMentorSessions / uniqueMentors) * 100) / 100 : 0;
 
-  mentorSessions.forEach((m) => {
-    if (m.sessionCount > 10) {
-      mentorHigh++;
-      powerMentors.push(m.mentorId);
-    } else if (m.sessionCount >= 5) {
-      mentorMedium++;
-    } else {
-      mentorLow++;
-    }
-  });
-
-  // Mentee engagement
+  // Average sessions per mentee
   const menteeSessions = await dbInstance
     .select({
       menteeId: officeSessions.menteeId,
-      sessionCount: sql<number>`COUNT(*)::int`,
+      count: sql<number>`COUNT(*)::int`,
     })
     .from(officeSessions)
     .where(
-      sql`${officeSessions.startsAt} >= ${startDate} 
-          AND ${officeSessions.startsAt} <= ${endDate}`
+      and(
+        gte(officeSessions.startsAt, startDate),
+        lte(officeSessions.startsAt, endDate),
+        ne(officeSessions.status, "cancelled")
+      )
     )
     .groupBy(officeSessions.menteeId);
 
-  let menteeHigh = 0;
-  let menteeMedium = 0;
-  let menteeLow = 0;
-  const powerMentees: string[] = [];
+  const uniqueMentees = menteeSessions.length;
+  const totalMenteeSessions = menteeSessions.reduce(
+    (sum, m) => sum + Number(m.count || 0),
+    0
+  );
+  const averageSessionsPerMentee =
+    uniqueMentees > 0 ? Math.round((totalMenteeSessions / uniqueMentees) * 100) / 100 : 0;
 
-  menteeSessions.forEach((m) => {
-    if (m.sessionCount > 5) {
-      menteeHigh++;
-      powerMentees.push(m.menteeId);
-    } else if (m.sessionCount >= 2) {
-      menteeMedium++;
-    } else {
-      menteeLow++;
-    }
-  });
+  // Repeat mentee rate (mentees with more than 1 session)
+  const repeatMentees = menteeSessions.filter((m) => Number(m.count || 0) > 1).length;
+  const repeatMenteeRate =
+    uniqueMentees > 0 ? Math.round((repeatMentees / uniqueMentees) * 10000) / 100 : 0;
+
+  // Mentor retention rate (mentors with sessions in both first and second half of period)
+  const periodMidpoint = new Date(
+    startDate.getTime() + (endDate.getTime() - startDate.getTime()) / 2
+  );
+  const firstHalfMentors = await dbInstance
+    .select({
+      mentorId: officeSessions.mentorId,
+    })
+    .from(officeSessions)
+    .where(
+      and(
+        gte(officeSessions.startsAt, startDate),
+        lte(officeSessions.startsAt, periodMidpoint),
+        ne(officeSessions.status, "cancelled")
+      )
+    )
+    .groupBy(officeSessions.mentorId);
+
+  const secondHalfMentors = await dbInstance
+    .select({
+      mentorId: officeSessions.mentorId,
+    })
+    .from(officeSessions)
+    .where(
+      and(
+        gte(officeSessions.startsAt, periodMidpoint),
+        lte(officeSessions.startsAt, endDate),
+        ne(officeSessions.status, "cancelled")
+      )
+    )
+    .groupBy(officeSessions.mentorId);
+
+  const firstHalfMentorIds = new Set(firstHalfMentors.map((m) => m.mentorId));
+  const secondHalfMentorIds = new Set(secondHalfMentors.map((m) => m.mentorId));
+  const retainedMentors = Array.from(firstHalfMentorIds).filter((id) =>
+    secondHalfMentorIds.has(id)
+  ).length;
+  const mentorRetentionRate =
+    firstHalfMentorIds.size > 0
+      ? Math.round((retainedMentors / firstHalfMentorIds.size) * 10000) / 100
+      : 0;
 
   return {
-    mentorEngagement: {
-      high: mentorHigh,
-      medium: mentorMedium,
-      low: mentorLow,
-    },
-    menteeEngagement: {
-      high: menteeHigh,
-      medium: menteeMedium,
-      low: menteeLow,
-    },
-    powerUsers: {
-      mentors: powerMentors,
-      mentees: powerMentees,
-    },
+    averageSessionsPerMentor,
+    averageSessionsPerMentee,
+    repeatMenteeRate,
+    mentorRetentionRate,
   };
 }
-

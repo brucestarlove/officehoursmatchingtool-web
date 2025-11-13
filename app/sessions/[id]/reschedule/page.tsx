@@ -10,7 +10,7 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { useSession, useRescheduleSession } from "@/lib/hooks/useSessions";
 import { useMentorAvailability } from "@/lib/hooks/useMentors";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
 import type { TimeSlot } from "@/types";
 import { ChevronLeft } from "lucide-react";
@@ -34,7 +34,6 @@ function ReschedulePageContent() {
   const { data: session, isLoading: sessionLoading, error: sessionError } =
     useSession(sessionId || null);
   const rescheduleMutation = useRescheduleSession();
-  const toast = useToast();
 
   // Get mentor availability for the mentor in this session
   const mentorId = session?.mentorId;
@@ -117,10 +116,9 @@ function ReschedulePageContent() {
         newStartTime: selectedSlot.startTime,
       });
 
-      toast.success(
-        "Session rescheduled!",
-        "Your session has been successfully rescheduled."
-      );
+      toast.success("Session rescheduled!", {
+        description: "Your session has been successfully rescheduled.",
+      });
       router.push(`/sessions/${sessionId}`);
     } catch (error: any) {
       let errorMessage = getErrorMessage(error);
@@ -148,7 +146,9 @@ function ReschedulePageContent() {
         setRescheduleError(errorMessage);
       }
 
-      toast.error("Failed to reschedule session", errorMessage);
+      toast.error("Failed to reschedule session", {
+        description: errorMessage,
+      });
     }
   };
 

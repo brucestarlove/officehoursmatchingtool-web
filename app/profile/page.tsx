@@ -13,7 +13,7 @@ import { Label } from "@/components/ui/label";
 import { ErrorMessage } from "@/components/ui/error-message";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Skeleton } from "@/components/ui/Skeleton";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
 import { logger } from "@/lib/utils/logger";
 import {
@@ -44,7 +44,6 @@ export default function ProfilePage() {
 function ProfileContent() {
   const router = useRouter();
   const { profile, isLoading, updateProfile, isUpdating } = useProfile();
-  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const isMentor = profile?.role === "mentor";
@@ -143,13 +142,17 @@ function ProfileContent() {
       }
 
       await updateProfile(updateData);
-      toast.success("Profile updated", "Your profile has been updated successfully.");
+      toast.success("Profile updated", {
+        description: "Your profile has been updated successfully.",
+      });
       router.push("/dashboard");
     } catch (err: any) {
       const errorMessage = getErrorMessage(err, "Failed to update profile. Please try again.");
       logger.error("Profile update error", err);
       setError(errorMessage);
-      toast.error("Update failed", errorMessage);
+      toast.error("Update failed", {
+        description: errorMessage,
+      });
     }
   };
 
