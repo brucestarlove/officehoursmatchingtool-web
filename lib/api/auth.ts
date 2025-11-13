@@ -1,43 +1,12 @@
 import apiClient from "./client";
-
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-  role: "mentor" | "mentee";
-  profile?: MentorProfile | MenteeProfile;
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface MentorProfile {
-  id: string;
-  userId: string;
-  bio?: string;
-  expertise: string[];
-  industries: string[];
-  company?: string;
-  title?: string;
-  rating?: number;
-  reviewCount?: number;
-}
-
-export interface MenteeProfile {
-  id: string;
-  userId: string;
-  bio?: string;
-  goals: string[];
-  interests: string[];
-  startupStage?: string;
-}
+import type { User, MentorProfile, MenteeProfile } from "@/types";
 
 /**
  * Get current authenticated user
- * This calls GET /auth/me with the Access Token
- * Lambda reads JWT claims and upserts user to Postgres
+ * Uses NextAuth session via /api/profiles/me endpoint
  */
 export async function getCurrentUser(): Promise<User> {
-  const response = await apiClient.get<User>("/auth/me");
+  const response = await apiClient.get<User>("/profiles/me");
   return response.data;
 }
 
@@ -69,4 +38,3 @@ export async function getMenteeProfile(menteeId: string): Promise<MenteeProfile>
   const response = await apiClient.get<MenteeProfile>(`/profiles/mentee/${menteeId}`);
   return response.data;
 }
-

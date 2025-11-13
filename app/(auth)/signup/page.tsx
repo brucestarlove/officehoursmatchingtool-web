@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -14,13 +14,16 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card-cf";
 import { Badge } from "@/components/ui/badge-cf";
+import { logger } from "@/lib/utils/logger";
+import { useToast } from "@/lib/hooks/useToast";
+import { getErrorMessage } from "@/lib/utils/errorMessages";
+import { getAuthFormDefaults, saveAuthFormState, clearAuthFormState } from "@/lib/utils/authFormState";
 
 export default function SignUpPage() {
   const router = useRouter();
   const { signUp, isSigningUp } = useAuth();
+  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
-  const [showVerification, setShowVerification] = useState(false);
-  const [email, setEmail] = useState("");
 
   const {
     register,
@@ -29,34 +32,49 @@ export default function SignUpPage() {
     formState: { errors },
   } = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
+    defaultValues: getAuthFormDefaults(),
   });
+
+  const emailValue = watch("email");
+  const nameValue = watch("name");
+
+  // Save form fields to localStorage as user types
+  useEffect(() => {
+    if (emailValue || nameValue) {
+      saveAuthFormState({
+        email: emailValue || undefined,
+        name: nameValue || undefined,
+      });
+    }
+  }, [emailValue, nameValue]);
 
   const selectedRole = watch("role");
 
   const onSubmit = async (data: SignUpInput) => {
     try {
       setError(null);
+      
+      // Sign up with NextAuth - automatically signs in after signup
       await signUp({
         email: data.email,
         password: data.password,
-        attributes: {
-          email: data.email,
-          name: data.name,
-          "custom:role": data.role,
-        },
+        name: data.name,
+        role: data.role,
       });
-      setEmail(data.email);
-      setShowVerification(true);
+      
+      // Clear form state on successful signup
+      clearAuthFormState();
+      
+      // User is automatically signed in and redirected to dashboard
+      // No verification step needed for now
     } catch (err: any) {
-      setError(err.message || "Sign up failed. Please try again.");
+      // Enhanced error handling
+      const errorMessage = getErrorMessage(err, "Sign up failed. Please try again.");
+      logger.error("Sign up error", err);
+      setError(errorMessage);
+      toast.error("Sign up failed", errorMessage);
     }
   };
-
-  if (showVerification) {
-    return (
-      <VerificationStep email={email} onBack={() => setShowVerification(false)} />
-    );
-  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-cf-beige-50 px-4 py-12">
@@ -205,89 +223,6 @@ export default function SignUpPage() {
               Sign in
             </Link>
           </div>
-        </div>
-      </Card>
-    </div>
-  );
-}
-
-function VerificationStep({
-  email,
-  onBack,
-}: {
-  email: string;
-  onBack: () => void;
-}) {
-  const router = useRouter();
-  const { confirmSignUp, isConfirmingSignUp } = useAuth();
-  const [code, setCode] = useState("");
-  const [error, setError] = useState<string | null>(null);
-
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      setError(null);
-      await confirmSignUp({ email, code });
-      router.push("/login");
-    } catch (err: any) {
-      setError(err.message || "Invalid verification code. Please try again.");
-    }
-  };
-
-  return (
-    <div className="flex min-h-screen items-center justify-center bg-cf-beige-50 px-4 py-12">
-      <Card variant="default" className="w-full max-w-md">
-        <div className="space-y-6">
-          <div className="space-y-2 text-center">
-            <h1 className="text-3xl font-display font-bold uppercase">
-              Verify Email
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              We sent a verification code to {email}
-            </p>
-          </div>
-
-          <form onSubmit={handleVerify} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="code">Verification Code</Label>
-              <Input
-                id="code"
-                type="text"
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                disabled={isConfirmingSignUp}
-                maxLength={6}
-              />
-              {error && <ErrorMessage message={error} />}
-            </div>
-
-            <Button
-              type="submit"
-              variant="default"
-              className="w-full"
-              disabled={isConfirmingSignUp || !code}
-            >
-              {isConfirmingSignUp ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  Verifying...
-                </>
-              ) : (
-                "Verify Email"
-              )}
-            </Button>
-
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full"
-              onClick={onBack}
-              disabled={isConfirmingSignUp}
-            >
-              Back
-            </Button>
-          </form>
         </div>
       </Card>
     </div>

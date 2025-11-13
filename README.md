@@ -15,6 +15,9 @@ AI-Powered Mentor-Mentee Matching Platform built with Next.js 14+ and TypeScript
 # Install dependencies
 npm install
 
+# Copy environment variables template
+cp .env.example .env
+
 # Run development server
 npm run dev
 ```
