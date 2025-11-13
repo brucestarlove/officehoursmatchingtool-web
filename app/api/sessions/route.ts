@@ -27,11 +27,15 @@ import type {
 } from "@/types";
 import type { SessionStatus } from "@/lib/constants/sessions";
 import { DEFAULT_PAGE_SIZE } from "@/lib/constants/sessions";
-import { checkAvailabilityConflict } from "@/lib/utils/availability";
+import {
+  checkAvailabilityConflict,
+  checkSlotExistsInAvailability,
+} from "@/lib/utils/availability";
+import { logger } from "@/lib/utils/logger";
 import { z } from "zod";
 
 const bookingSchema = z.object({
-  mentorId: z.string().uuid(),
+  mentorId: z.string(), // Can be UUID or email prefix
   menteeId: z.string().uuid(),
   startTime: z.string().datetime(),
   duration: z.number().int().min(15).max(120),
@@ -209,14 +213,55 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const validated = bookingSchema.parse(body);
 
-    // Verify mentor exists
-    const mentor = await db.query.mentors.findFirst({
-      where: eq(mentors.id, validated.mentorId),
-    });
+    // Look up mentor - mentorId can be UUID or email prefix
+    let mentor;
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(
+      validated.mentorId
+    );
+
+    if (isUuid) {
+      // Direct UUID lookup
+      mentor = await db.query.mentors.findFirst({
+        where: eq(mentors.id, validated.mentorId),
+        with: {
+          user: true,
+        },
+      });
+    } else {
+      // Email prefix lookup (like in mentors/[id] endpoint)
+      const mentorResult = await db
+        .select({
+          mentor: mentors,
+          user: users,
+        })
+        .from(mentors)
+        .innerJoin(users, eq(mentors.userId, users.id))
+        .where(
+          and(
+            eq(mentors.active, true),
+            sql`LOWER(SPLIT_PART(${users.email}, '@', 1)) = LOWER(${validated.mentorId})`
+          )
+        )
+        .limit(1);
+
+      if (mentorResult && mentorResult.length > 0) {
+        mentor = {
+          ...mentorResult[0].mentor,
+          user: mentorResult[0].user,
+        };
+      }
+    }
 
     if (!mentor) {
+      logger.warn("Mentor not found", {
+        mentorId: validated.mentorId,
+        isUuid,
+      });
       return createNotFoundResponse("Mentor");
     }
+
+    // Use the actual mentor UUID for database operations
+    const actualMentorId = mentor.id;
 
     // Get mentee profile for current user
     const menteeProfile = await db.query.mentees.findFirst({
@@ -243,16 +288,78 @@ export async function POST(request: NextRequest) {
       startTime.getTime() + validated.duration * 60 * 1000
     );
 
-    // Check availability
-    const hasConflict = await checkAvailabilityConflict(
-      validated.mentorId,
-      startTime,
-      endTime
-    );
+    // Validate that the time slot exists in mentor's availability
+    logger.info("Checking slot availability", {
+      mentorId: actualMentorId,
+      mentorIdInput: validated.mentorId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      duration: validated.duration,
+    });
+
+    let slotExists = false;
+    try {
+      slotExists = await checkSlotExistsInAvailability(
+        actualMentorId,
+        startTime,
+        endTime
+      );
+    } catch (error) {
+      logger.error("Error checking slot availability", error, {
+        mentorId: actualMentorId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error("Failed to verify slot availability. Please try again."),
+        500
+      );
+    }
+
+    if (!slotExists) {
+      logger.warn("Slot does not exist in availability", {
+        mentorId: actualMentorId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error(
+          "The selected time slot is not available. Please choose a different time."
+        ),
+        409
+      );
+    }
+
+    // Check for conflicts with existing bookings
+    let hasConflict = false;
+    try {
+      hasConflict = await checkAvailabilityConflict(
+        actualMentorId,
+        startTime,
+        endTime
+      );
+    } catch (error) {
+      logger.error("Error checking availability conflict", error, {
+        mentorId: actualMentorId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error("Failed to check for booking conflicts. Please try again."),
+        500
+      );
+    }
 
     if (hasConflict) {
+      logger.warn("Booking conflict detected", {
+        mentorId: actualMentorId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+      });
       return createErrorResponse(
-        new Error("Time slot is not available or conflicts with existing booking"),
+        new Error(
+          "This time slot has already been booked. Please select another time."
+        ),
         409
       );
     }
@@ -264,40 +371,78 @@ export async function POST(request: NextRequest) {
         : undefined;
 
     // Create session
-    const [newSession] = await db
-      .insert(officeSessions)
-      .values({
-        mentorId: validated.mentorId,
-        menteeId: validated.menteeId,
-        startsAt: startTime,
-        endsAt: endTime,
-        duration: validated.duration,
-        status: "scheduled",
-        meetingType: validated.meetingType,
-        meetingUrl: meetingUrl,
-        goals: validated.goals || null,
-      })
-      .returning();
-
-    // Fetch full session with relations
-    const sessionWithRelations = await db.query.officeSessions.findFirst({
-      where: eq(officeSessions.id, newSession.id),
-      with: {
-        mentor: {
-          with: {
-            user: true,
-          },
-        },
-        mentee: {
-          with: {
-            user: true,
-          },
-        },
-      },
+    logger.info("Creating session", {
+      mentorId: actualMentorId,
+      mentorIdInput: validated.mentorId,
+      menteeId: validated.menteeId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
     });
 
+    let newSession;
+    try {
+      [newSession] = await db
+        .insert(officeSessions)
+        .values({
+          mentorId: actualMentorId,
+          menteeId: validated.menteeId,
+          startsAt: startTime,
+          endsAt: endTime,
+          duration: validated.duration,
+          status: "scheduled",
+          meetingType: validated.meetingType,
+          meetingUrl: meetingUrl,
+          goals: validated.goals || null,
+        })
+        .returning();
+    } catch (error) {
+      logger.error("Error creating session", error, {
+        mentorId: actualMentorId,
+        menteeId: validated.menteeId,
+        startTime: startTime.toISOString(),
+      });
+      return createErrorResponse(
+        new Error("Failed to create session. Please try again."),
+        500
+      );
+    }
+
+    // Fetch full session with relations
+    let sessionWithRelations;
+    try {
+      sessionWithRelations = await db.query.officeSessions.findFirst({
+        where: eq(officeSessions.id, newSession.id),
+        with: {
+          mentor: {
+            with: {
+              user: true,
+            },
+          },
+          mentee: {
+            with: {
+              user: true,
+            },
+          },
+        },
+      });
+    } catch (error) {
+      logger.error("Error fetching created session", error, {
+        sessionId: newSession.id,
+      });
+      return createErrorResponse(
+        new Error("Session created but failed to retrieve details. Please refresh."),
+        500
+      );
+    }
+
     if (!sessionWithRelations) {
-      return createErrorResponse(new Error("Failed to create session"), 500);
+      logger.error("Session not found after creation", {
+        sessionId: newSession.id,
+      });
+      return createErrorResponse(
+        new Error("Session created but not found. Please refresh."),
+        500
+      );
     }
 
     // Map to frontend Session type
@@ -349,6 +494,13 @@ export async function POST(request: NextRequest) {
     // Generate calendar event URL (placeholder)
     const calendarEventUrl = `/api/sessions/${sessionResponse.id}/calendar.ics`;
 
+    logger.info("Session booked successfully", {
+      sessionId: sessionResponse.id,
+      mentorId: actualMentorId,
+      mentorIdInput: validated.mentorId,
+      menteeId: validated.menteeId,
+    });
+
     return NextResponse.json({
       session: sessionResponse,
       calendarEvent: {
@@ -356,6 +508,15 @@ export async function POST(request: NextRequest) {
       },
     } as BookingResponse);
   } catch (error) {
+    try {
+      const user = await getCurrentUser();
+      logger.error("Unexpected error in booking endpoint", error, {
+        userId: user?.id,
+      });
+    } catch {
+      logger.error("Unexpected error in booking endpoint", error);
+    }
+
     if (error instanceof z.ZodError) {
       return createErrorResponse(error, 400);
     }

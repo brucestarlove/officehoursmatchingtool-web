@@ -5,48 +5,97 @@
 import type { TimeSlot } from "@/types";
 import { db } from "@/lib/db";
 import { availability, officeSessions } from "@/lib/db/schema";
-import { and, eq, gte, lte, or, sql } from "drizzle-orm";
+import { and, eq, gte, lte, or, lt, gt } from "drizzle-orm";
+import { logger } from "@/lib/utils/logger";
 
 /**
- * Check if a time slot conflicts with existing availability or bookings
+ * Check if a time slot conflicts with existing bookings
+ * Returns true if there's a conflict, false if the slot is available
+ * 
+ * Note: This function assumes the slot exists in availability blocks.
+ * Callers should verify availability separately.
  */
 export async function checkAvailabilityConflict(
   mentorId: string,
   startTime: Date,
   endTime: Date
 ): Promise<boolean> {
-  // Check for overlapping availability blocks
-  const overlappingAvailability = await db
-    .select()
-    .from(availability)
-    .where(
-      and(
-        eq(availability.mentorId, mentorId),
-        sql`${availability.startsAt} < ${endTime}`,
-        sql`${availability.endsAt} > ${startTime}`
+  try {
+    // Check for overlapping booked sessions
+    // A conflict exists if:
+    // - Session starts before our end time AND
+    // - Session ends after our start time
+    const overlappingSessions = await db
+      .select()
+      .from(officeSessions)
+      .where(
+        and(
+          eq(officeSessions.mentorId, mentorId),
+          eq(officeSessions.status, "scheduled"), // Only check scheduled sessions
+          lt(officeSessions.startsAt, endTime),
+          gt(officeSessions.endsAt, startTime)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  if (overlappingAvailability.length > 0) {
-    return true; // Conflict found
+    const hasConflict = overlappingSessions.length > 0;
+    
+    if (hasConflict) {
+      logger.warn("Availability conflict detected", {
+        mentorId,
+        startTime: startTime.toISOString(),
+        endTime: endTime.toISOString(),
+        conflictingSessions: overlappingSessions.length,
+      });
+    }
+
+    return hasConflict;
+  } catch (error) {
+    logger.error("Error checking availability conflict", error, {
+      mentorId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+    });
+    // On error, assume conflict to prevent double-booking
+    throw error;
   }
+}
 
-  // Check for overlapping booked sessions
-  const overlappingSessions = await db
-    .select()
-    .from(officeSessions)
-    .where(
-      and(
-        eq(officeSessions.mentorId, mentorId),
-        eq(officeSessions.status, "scheduled"), // Only check scheduled sessions
-        sql`${officeSessions.startsAt} < ${endTime}`,
-        sql`${officeSessions.endsAt} > ${startTime}`
+/**
+ * Check if a time slot exists in mentor's availability blocks
+ * Returns true if the slot is within an availability block, false otherwise
+ */
+export async function checkSlotExistsInAvailability(
+  mentorId: string,
+  startTime: Date,
+  endTime: Date
+): Promise<boolean> {
+  try {
+    // Check if the requested slot is within any availability block
+    // The slot must be completely contained within an availability block:
+    // - Availability starts at or before our start time AND
+    // - Availability ends at or after our end time
+    const matchingAvailability = await db
+      .select()
+      .from(availability)
+      .where(
+        and(
+          eq(availability.mentorId, mentorId),
+          lte(availability.startsAt, startTime),
+          gte(availability.endsAt, endTime)
+        )
       )
-    )
-    .limit(1);
+      .limit(1);
 
-  return overlappingSessions.length > 0; // Conflict if any overlapping sessions
+    return matchingAvailability.length > 0;
+  } catch (error) {
+    logger.error("Error checking slot availability", error, {
+      mentorId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+    });
+    throw error;
+  }
 }
 
 /**

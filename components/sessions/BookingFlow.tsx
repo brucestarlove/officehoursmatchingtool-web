@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card } from "@/components/ui/card-cf";
 import { Button } from "@/components/ui/button-cf";
 import { TimeSlotSelector } from "./TimeSlotSelector";
 import { SessionConfirmation } from "./SessionConfirmation";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { ErrorMessage } from "@/components/ui/error-message";
 import { useMentor, useMentorAvailability } from "@/lib/hooks/useMentors";
 import { useBookSession } from "@/lib/hooks/useSessions";
 import { useAuth } from "@/lib/hooks/useAuth";
@@ -39,6 +40,8 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
   const [duration, setDuration] = useState(60);
   const [meetingType, setMeetingType] = useState<"video" | "in-person">("video");
   const [goals, setGoals] = useState("");
+  const [bookingError, setBookingError] = useState<string | null>(null);
+  const [bookingTimeout, setBookingTimeout] = useState<NodeJS.Timeout | null>(null);
 
   const { data: mentor, isLoading: mentorLoading } = useMentor(mentorId);
   const { data: availability, isLoading: availabilityLoading } = useMentorAvailability(
@@ -47,6 +50,20 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
 
   const bookSessionMutation = useBookSession();
   const toast = useToast();
+
+  // Clear error when step changes or slot changes
+  useEffect(() => {
+    setBookingError(null);
+  }, [step, selectedSlot]);
+
+  // Clear timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (bookingTimeout) {
+        clearTimeout(bookingTimeout);
+      }
+    };
+  }, [bookingTimeout]);
 
   const handleSlotSelect = (slot: TimeSlot) => {
     setSelectedSlot(slot);
@@ -58,22 +75,103 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
 
   const handleConfirm = async () => {
     if (!selectedSlot || !user) {
+      setBookingError("Please select a time slot and ensure you're logged in.");
       return;
     }
+
+    // Get mentee ID from user profile
+    // The user.profile should contain the mentee profile with the actual mentee ID
+    if (user.role !== "mentee") {
+      setBookingError(
+        "Only mentees can book sessions. Please log in with a mentee account."
+      );
+      return;
+    }
+
+    if (!user.profile) {
+      setBookingError(
+        "Your mentee profile is missing. Please complete your profile before booking."
+      );
+      return;
+    }
+
+    // TypeScript: we know it's a MenteeProfile since role is "mentee"
+    const menteeProfile = user.profile as { id: string; userId?: string };
+    const menteeId = menteeProfile.id;
+    
+    if (!menteeId) {
+      setBookingError(
+        "Unable to find your mentee profile ID. Please refresh the page and try again."
+      );
+      return;
+    }
+
+    // Clear any previous errors
+    setBookingError(null);
+
+    // Set timeout to show error if booking takes too long
+    const timeout = setTimeout(() => {
+      if (bookSessionMutation.isPending) {
+        setBookingError(
+          "Booking is taking longer than expected. Please check your connection and try again."
+        );
+      }
+    }, 30000); // 30 seconds
+    setBookingTimeout(timeout);
 
     try {
       await bookSessionMutation.mutateAsync({
         mentorId,
-        menteeId: user.id,
+        menteeId: menteeId,
         startTime: selectedSlot.startTime,
         duration,
         meetingType,
         goals: goals.trim() || undefined,
       });
+
+      // Clear timeout on success
+      if (timeout) {
+        clearTimeout(timeout);
+        setBookingTimeout(null);
+      }
+
       toast.success("Session booked!", "Your session has been successfully booked.");
       setStep(3);
-    } catch (error) {
-      toast.error("Failed to book session", getErrorMessage(error));
+    } catch (error: any) {
+      // Clear timeout on error
+      if (timeout) {
+        clearTimeout(timeout);
+        setBookingTimeout(null);
+      }
+
+      // Extract error message from API response if available
+      let errorMessage = getErrorMessage(error);
+      
+      // Check for specific error messages from API
+      if (error?.response?.data?.message) {
+        errorMessage = error.response.data.message;
+      } else if (error?.message) {
+        errorMessage = error.message;
+      }
+
+      // Handle specific error cases
+      if (errorMessage.includes("not available") || errorMessage.includes("already been booked")) {
+        setBookingError(
+          "This time slot is no longer available. Please go back and select a different time."
+        );
+      } else if (errorMessage.includes("Mentee profile not found")) {
+        setBookingError(
+          "Your mentee profile is missing. Please complete your profile before booking."
+        );
+      } else if (errorMessage.includes("timeout") || errorMessage.includes("time out")) {
+        setBookingError(
+          "The booking request timed out. Please check your connection and try again."
+        );
+      } else {
+        setBookingError(errorMessage);
+      }
+
+      toast.error("Failed to book session", errorMessage);
     }
   };
 
@@ -230,6 +328,13 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
               rows={4}
             />
           </Card>
+
+          {/* Error Display */}
+          {bookingError && (
+            <Card variant="default" className="mb-6 border-cf-red-200 bg-cf-red-50 p-4">
+              <ErrorMessage message={bookingError} />
+            </Card>
+          )}
 
           {/* Navigation */}
           <div className="flex justify-between">

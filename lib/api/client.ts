@@ -8,12 +8,18 @@ const apiClient: AxiosInstance = axios.create({
     "Content-Type": "application/json",
   },
   withCredentials: true, // Include cookies for NextAuth session
+  timeout: 30000, // 30 seconds timeout for all requests
 });
 
 // Response interceptor: Handle errors
 apiClient.interceptors.response.use(
   (response) => response,
   async (error: AxiosError) => {
+    // Handle timeout errors specifically
+    if (error.code === "ECONNABORTED" || error.message.includes("timeout")) {
+      error.message = "Request timed out. Please check your connection and try again.";
+    }
+
     // NextAuth handles session refresh automatically via cookies
     // Just propagate errors for the calling code to handle
     return Promise.reject(error);
