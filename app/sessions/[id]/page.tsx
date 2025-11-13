@@ -1,30 +1,36 @@
 "use client";
 
-import { use } from "react";
 import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionDetail } from "@/components/sessions/SessionDetail";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useSession } from "@/lib/hooks/useSessions";
 
-interface SessionPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function SessionPage({ params }: SessionPageProps) {
+export default function SessionPage() {
   return (
     <ProtectedRoute>
-      <SessionPageContent params={params} />
+      <SessionPageContent />
     </ProtectedRoute>
   );
 }
 
-function SessionPageContent({ params }: SessionPageProps) {
-  const resolvedParams = use(params);
+function SessionPageContent() {
   const router = useRouter();
-  const sessionId = resolvedParams.id;
+  const params = useParams();
+  const sessionId = params?.id as string;
 
-  const { data: session, isLoading, error } = useSession(sessionId);
+  const { data: session, isLoading, error } = useSession(sessionId || null);
+
+  if (!sessionId) {
+    return (
+      <div className="container mx-auto max-w-4xl p-8">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          Invalid session ID. Please check the URL and try again.
+        </div>
+      </div>
+    );
+  }
 
   const handleReschedule = () => {
     // TODO: Open calendar modal or navigate to reschedule page
