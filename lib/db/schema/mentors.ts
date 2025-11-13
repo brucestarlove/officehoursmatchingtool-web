@@ -41,6 +41,7 @@ export const mentors = pgTable("mentors", {
   active: boolean("active").default(true).notNull(),
   photoUrl: text("photo_url"),
   linkedinUrl: text("linkedin_url"),
+  syncVersion: integer("sync_version").default(0).notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -75,4 +76,36 @@ export const expertiseRelations = relations(expertise, ({ one }) => ({
     references: [mentors.id],
   }),
 }));
+
+/**
+ * Outbox table for outbound Airtable sync
+ * Implements outbox pattern for reliable async sync
+ */
+export const outbox = pgTable("outbox", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  entityType: text("entity_type").notNull(), // 'mentor', 'mentee', etc.
+  entityId: uuid("entity_id").notNull(),
+  action: text("action").notNull(), // 'upsert', 'delete'
+  payloadJson: text("payload_json").notNull(), // JSON string of fields to sync
+  status: text("status").default("pending").notNull(), // 'pending', 'processing', 'completed', 'failed'
+  attempts: integer("attempts").default(0).notNull(),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+/**
+ * Airtable sync metadata table
+ * Tracks sync state and version for conflict detection
+ */
+export const airtableSyncMetadata = pgTable("airtable_sync_metadata", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  entityType: text("entity_type").notNull(),
+  entityId: uuid("entity_id").notNull(),
+  airtableRecordId: text("airtable_record_id").notNull(),
+  lastSyncedAt: timestamp("last_synced_at"),
+  syncVersion: integer("sync_version").default(0).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
 

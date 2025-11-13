@@ -19,6 +19,16 @@ import {
   updateMentorProfileSchema,
   updateMenteeProfileSchema,
 } from "@/lib/validations/profiles";
+import {
+  upsertAirtableRecord,
+  mapMentorToAirtableFields,
+} from "@/lib/api/airtable";
+import {
+  calculateMentorUtilization,
+  calculateAvgFeedback,
+} from "@/lib/utils/analytics";
+import { AIRTABLE_CONFIG } from "@/lib/constants/airtable-mappings";
+import { airtableSyncMetadata } from "@/lib/db/schema";
 
 export async function GET(
   request: NextRequest,
@@ -124,6 +134,7 @@ export async function PUT(
     }
 
     // Update or create role-specific profile
+    let updatedMentorId: string | null = null;
     if (currentUser.role === "mentor") {
       const mentorUpdates = updateMentorProfileSchema.parse(body);
       if (Object.keys(mentorUpdates).length > 0) {
@@ -141,14 +152,19 @@ export async function PUT(
               updatedAt: new Date(),
             })
             .where(eq(mentors.id, mentor.id));
+          updatedMentorId = mentor.id;
         } else {
           // Create new mentor profile if it doesn't exist
-          await db.insert(mentors).values({
+          const newMentors = await db.insert(mentors).values({
             userId: id,
             ...mentorUpdates,
             createdAt: new Date(),
             updatedAt: new Date(),
-          });
+          }).returning();
+          
+          if (newMentors.length > 0) {
+            updatedMentorId = newMentors[0].id;
+          }
         }
       }
     } else if (currentUser.role === "mentee") {
@@ -195,6 +211,82 @@ export async function PUT(
 
     if (!updatedUser) {
       return createNotFoundResponse("User");
+    }
+
+    // Sync mentor profile to Airtable immediately (real-time sync)
+    if (updatedUser.role === "mentor" && updatedUser.mentor && updatedMentorId) {
+      try {
+        // Calculate computed fields
+        const utilization = await calculateMentorUtilization(updatedMentorId, 30);
+        const avgFeedback = await calculateAvgFeedback(updatedMentorId, 90);
+
+        // Map to Airtable fields
+        const airtableFields = mapMentorToAirtableFields({
+          name: updatedUser.name || null,
+          headline: updatedUser.mentor.headline,
+          bio: updatedUser.mentor.bio,
+          company: updatedUser.mentor.company,
+          title: updatedUser.mentor.title,
+          active: updatedUser.mentor.active,
+          expertise: updatedUser.mentor.expertise || [],
+          industry: updatedUser.mentor.industry,
+          stage: updatedUser.mentor.stage,
+          timezone: updatedUser.mentor.timezone,
+          utilization,
+          avgFeedback,
+          email: updatedUser.email || null,
+        });
+
+        // Get or create sync metadata
+        const metadata = await db.query.airtableSyncMetadata.findFirst({
+          where: eq(airtableSyncMetadata.entityId, updatedMentorId),
+        });
+
+        const airtableRecordId =
+          metadata?.airtableRecordId || updatedUser.mentor.airtableRecordId;
+
+        // Upsert to Airtable
+        const updatedRecordId = await upsertAirtableRecord(
+          AIRTABLE_CONFIG.MENTORS_TABLE_ID,
+          airtableRecordId || null,
+          airtableFields
+        );
+
+        // Update sync metadata
+        if (metadata) {
+          await db
+            .update(airtableSyncMetadata)
+            .set({
+              airtableRecordId: updatedRecordId,
+              lastSyncedAt: new Date(),
+              syncVersion: updatedUser.mentor.syncVersion,
+              updatedAt: new Date(),
+            })
+            .where(eq(airtableSyncMetadata.id, metadata.id));
+        } else {
+          await db.insert(airtableSyncMetadata).values({
+            entityType: "mentor",
+            entityId: updatedMentorId,
+            airtableRecordId: updatedRecordId,
+            lastSyncedAt: new Date(),
+            syncVersion: updatedUser.mentor.syncVersion,
+          });
+        }
+
+        // Update mentor's airtableRecordId if it was null
+        if (!updatedUser.mentor.airtableRecordId) {
+          await db
+            .update(mentors)
+            .set({ airtableRecordId: updatedRecordId })
+            .where(eq(mentors.id, updatedMentorId));
+        }
+      } catch (error: any) {
+        // Log error but don't fail the request - Airtable sync failures shouldn't break profile updates
+        console.error(
+          `Failed to sync mentor ${updatedMentorId} to Airtable:`,
+          error
+        );
+      }
     }
 
     // Helper function to parse goals from string to array

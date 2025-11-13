@@ -15,7 +15,6 @@ import {
 import { ProfileSidebar } from "@/components/dashboard/ProfileSidebar";
 import Link from "next/link";
 import { useSessions } from "@/lib/hooks/useSessions";
-import { AlertCircle } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -70,27 +69,6 @@ function DashboardContent() {
           </Button>
         </div>
 
-        {/* Alert Banner - Profile Required */}
-        {!isAdmin && !hasProfile && (
-          <Card variant="yellow-border" className="p-4">
-            <div className="flex items-start gap-4">
-              <AlertCircle className="h-5 w-5 text-cf-yellow-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-cf-yellow-900 mb-1">
-                  Complete Your Profile to Get Started
-                </h3>
-                <p className="text-sm text-cf-yellow-800 mb-3">
-                  Your profile is essential for using the platform. Create your {user?.role === "mentor" ? "mentor" : "mentee"} profile to start {user?.role === "mentor" ? "mentoring" : "finding mentors"} and booking sessions.
-                </p>
-                <Link href="/profile">
-                  <Button variant="default" size="sm">
-                    Create Your Profile!
-                  </Button>
-                </Link>
-              </div>
-            </div>
-          </Card>
-        )}
 
         {/* Stats Cards - Mentor Only (show only if profile exists) */}
         {user?.role === "mentor" && hasProfile && (

@@ -88,14 +88,24 @@ export function useAuth() {
       password,
       name,
       role,
+      ...profileData
     }: {
       email: string;
       password: string;
       name?: string;
       role?: "mentor" | "mentee";
+      headline?: string;
+      bio?: string;
+      company?: string;
+      title?: string;
+      industry?: string;
+      stage?: string;
+      timezone?: string;
+      expertise?: string[];
+      goals?: string;
     }) => {
       try {
-        const result = await signUp(email, password, name);
+        const result = await signUp(email, password, name, role, profileData);
         
         if (result.error) {
           // Extract error message with fallback
