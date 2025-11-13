@@ -10,7 +10,6 @@ import { availability, mentors } from "@/lib/db/schema";
 import { eq, and } from "drizzle-orm";
 import {
   createErrorResponse,
-  createForbiddenResponse,
   createNotFoundResponse,
 } from "@/lib/utils/api-errors";
 import { checkAvailabilityConflict } from "@/lib/utils/availability";

@@ -11,6 +11,7 @@ import {
   AverageRatingCard,
   UtilizationRateCard,
 } from "@/components/dashboard/StatsCard";
+import { ProfileSidebar } from "@/components/dashboard/ProfileSidebar";
 import Link from "next/link";
 import { useSessions } from "@/lib/hooks/useSessions";
 
@@ -84,8 +85,11 @@ function DashboardContent() {
             {user?.role === "mentee" && <MentorSuggestions limit={3} />}
           </div>
 
-          {/* Right Column - Quick Actions */}
+          {/* Right Column - Profile & Quick Actions */}
           <div className="space-y-6">
+            {/* Profile Sidebar */}
+            <ProfileSidebar />
+
             {/* Quick Actions */}
             <Card variant="default" className="p-6">
               <h3 className="mb-4 text-lg font-semibold">Quick Actions</h3>
@@ -104,11 +108,6 @@ function DashboardContent() {
                     </Button>
                   </Link>
                 )}
-                <Link href="/profile">
-                  <Button variant="outline" className="w-full">
-                    View Profile
-                  </Button>
-                </Link>
               </div>
             </Card>
           </div>

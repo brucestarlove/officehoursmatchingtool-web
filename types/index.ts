@@ -175,6 +175,16 @@ export interface BookingResponse {
   };
 }
 
+export interface SessionsListResponse {
+  sessions: Session[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
 // Dashboard Types
 export interface DashboardStats {
   sessionsThisMonth: number;

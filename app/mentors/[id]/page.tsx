@@ -1,7 +1,7 @@
 "use client";
 
-import { use } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { MentorProfile } from "@/components/mentor/MentorProfile";
 import { Button } from "@/components/ui/button-cf";
@@ -9,26 +9,22 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useMentor, useMentorAvailability } from "@/lib/hooks/useMentors";
 import { useState } from "react";
 
-interface MentorPageProps {
-  params: Promise<{ id: string }>;
-}
-
-export default function MentorPage({ params }: MentorPageProps) {
+export default function MentorPage() {
   return (
     <ProtectedRoute>
-      <MentorPageContent params={params} />
+      <MentorPageContent />
     </ProtectedRoute>
   );
 }
 
-function MentorPageContent({ params }: MentorPageProps) {
-  const resolvedParams = use(params);
+function MentorPageContent() {
   const router = useRouter();
-  const mentorId = resolvedParams.id;
+  const params = useParams();
+  const mentorId = params?.id as string;
 
-  const { data: mentor, isLoading: mentorLoading, error: mentorError } = useMentor(mentorId);
+  const { data: mentor, isLoading: mentorLoading, error: mentorError } = useMentor(mentorId || "");
   const { data: availability, isLoading: availabilityLoading } = useMentorAvailability(
-    mentorId,
+    mentorId || "",
     undefined,
     undefined
   );
@@ -52,6 +48,16 @@ function MentorPageContent({ params }: MentorPageProps) {
     setIsBookmarked(!isBookmarked);
     // TODO: Implement bookmark API call
   };
+
+  if (!mentorId) {
+    return (
+      <div className="container mx-auto max-w-4xl p-8">
+        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-800">
+          Invalid mentor ID. Please check the URL and try again.
+        </div>
+      </div>
+    );
+  }
 
   if (mentorLoading) {
     return (
