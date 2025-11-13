@@ -10,6 +10,7 @@ import {
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { users } from "./users";
+import { reviews } from "./reviews";
 
 // Visibility enum
 export const visibilityEnum = pgEnum("visibility", [
@@ -65,6 +66,7 @@ export const mentorsRelations = relations(mentors, ({ one, many }) => ({
     references: [users.id],
   }),
   expertise: many(expertise),
+  reviews: many(reviews),
 }));
 
 export const expertiseRelations = relations(expertise, ({ one }) => ({

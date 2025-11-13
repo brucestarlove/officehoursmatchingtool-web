@@ -28,9 +28,39 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
   const minSwipeDistance = 50;
 
   // Get suggestions based on user's goals/interests and feedback history
-  const suggestionQuery = user?.profile && "goals" in user.profile
-    ? user.profile.goals.join(", ")
-    : "startup mentorship";
+  // Safely handle goals which might be an array, string, null, or undefined
+  const getGoalsString = () => {
+    if (!user?.profile || !("goals" in user.profile)) {
+      return "startup mentorship";
+    }
+    
+    const goals = user.profile.goals;
+    
+    // Handle array
+    if (Array.isArray(goals)) {
+      return goals.length > 0 ? goals.join(", ") : "startup mentorship";
+    }
+    
+    // Handle string (might be JSON string or comma-separated)
+    if (typeof goals === "string" && goals.trim()) {
+      try {
+        // Try parsing as JSON first
+        const parsed = JSON.parse(goals);
+        if (Array.isArray(parsed)) {
+          return parsed.length > 0 ? parsed.join(", ") : "startup mentorship";
+        }
+      } catch {
+        // If not JSON, treat as comma-separated string
+        return goals;
+      }
+      return goals;
+    }
+    
+    // Fallback
+    return "startup mentorship";
+  };
+  
+  const suggestionQuery = getGoalsString();
 
   // Enhanced filters: incorporate feedback data if available
   const { data: matchData, isLoading } = useMatchMentors({

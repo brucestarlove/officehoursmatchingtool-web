@@ -49,16 +49,46 @@ export async function GET(
       return createNotFoundResponse("User");
     }
 
+    // Helper function to parse goals from string to array
+    const parseGoals = (goals: string | null | undefined): string[] => {
+      if (!goals) return [];
+      if (Array.isArray(goals)) return goals;
+      
+      try {
+        // Try parsing as JSON array
+        const parsed = JSON.parse(goals);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // If not JSON, treat as comma-separated string or single string
+        if (goals.includes(",")) {
+          return goals.split(",").map(g => g.trim()).filter(Boolean);
+        }
+        return [goals.trim()].filter(Boolean);
+      }
+      
+      return [];
+    };
+
     // Map to API response format
+    let profile = userWithProfile.role === "mentor" 
+      ? userWithProfile.mentor 
+      : userWithProfile.mentee;
+
+    // Normalize mentee profile: convert goals from string to array
+    if (userWithProfile.role === "mentee" && profile && "goals" in profile) {
+      profile = {
+        ...profile,
+        goals: parseGoals(profile.goals as string | null | undefined),
+      };
+    }
+
     const response = {
       id: userWithProfile.id,
       email: userWithProfile.email,
       name: userWithProfile.name,
       role: userWithProfile.role,
       status: userWithProfile.status,
-      profile: userWithProfile.role === "mentor" 
-        ? userWithProfile.mentor 
-        : userWithProfile.mentee,
+      profile,
       createdAt: userWithProfile.createdAt,
       updatedAt: userWithProfile.updatedAt,
     };
@@ -149,15 +179,46 @@ export async function PUT(
       return createNotFoundResponse("User");
     }
 
+    // Helper function to parse goals from string to array
+    const parseGoals = (goals: string | null | undefined): string[] => {
+      if (!goals) return [];
+      if (Array.isArray(goals)) return goals;
+      
+      try {
+        // Try parsing as JSON array
+        const parsed = JSON.parse(goals);
+        if (Array.isArray(parsed)) return parsed;
+      } catch {
+        // If not JSON, treat as comma-separated string or single string
+        if (goals.includes(",")) {
+          return goals.split(",").map(g => g.trim()).filter(Boolean);
+        }
+        return [goals.trim()].filter(Boolean);
+      }
+      
+      return [];
+    };
+
+    // Map to API response format
+    let profile = updatedUser.role === "mentor" 
+      ? updatedUser.mentor 
+      : updatedUser.mentee;
+
+    // Normalize mentee profile: convert goals from string to array
+    if (updatedUser.role === "mentee" && profile && "goals" in profile) {
+      profile = {
+        ...profile,
+        goals: parseGoals(profile.goals as string | null | undefined),
+      };
+    }
+
     const response = {
       id: updatedUser.id,
       email: updatedUser.email,
       name: updatedUser.name,
       role: updatedUser.role,
       status: updatedUser.status,
-      profile: updatedUser.role === "mentor" 
-        ? updatedUser.mentor 
-        : updatedUser.mentee,
+      profile,
       createdAt: updatedUser.createdAt,
       updatedAt: updatedUser.updatedAt || updatedUser.createdAt,
     };

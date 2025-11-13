@@ -9,6 +9,7 @@ import { db } from "@/lib/db";
 import { users, accounts, sessions, verificationTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import bcrypt from "bcryptjs";
+import { logger } from "@/lib/utils/logger";
 
 if (!process.env.AUTH_SECRET) {
   throw new Error("AUTH_SECRET environment variable is not set");
@@ -33,39 +34,60 @@ export const authOptions = {
         password: { label: "Password", type: "password" },
       },
       async authorize(credentials) {
-        if (!credentials?.email || !credentials?.password) {
+        try {
+          // Validate input
+          if (!credentials?.email || !credentials?.password) {
+            // Return null to prevent user enumeration - same error for missing credentials
+            return null;
+          }
+
+          const email = credentials.email as string;
+          const password = credentials.password as string;
+
+          // Find user by email using Drizzle query
+          const [user] = await db
+            .select()
+            .from(users)
+            .where(eq(users.email, email))
+            .limit(1);
+
+          // Security: Return null for both "user not found" and "invalid password"
+          // This prevents user enumeration attacks
+          if (!user || !user.passwordHash) {
+            return null;
+          }
+
+          // Verify password using bcrypt
+          const isValid = await bcrypt.compare(password, user.passwordHash);
+
+          if (!isValid) {
+            // Return null instead of throwing to prevent user enumeration
+            return null;
+          }
+
+          // Check if user account is active
+          if (user.status !== "active") {
+            // Return null for inactive accounts (same as invalid credentials for security)
+            return null;
+          }
+
+          // Return user object for NextAuth session
+          return {
+            id: user.id,
+            email: user.email,
+            name: user.name,
+            image: user.image,
+            role: user.role,
+          };
+        } catch (error) {
+          // Log error for debugging but don't expose details to client
+          logger.error("Authorization error during sign-in", error, {
+            context: "auth.authorize",
+            email: credentials?.email ? "provided" : "missing", // Don't log actual email for privacy
+          });
+          // Return null to prevent information leakage
           return null;
         }
-
-        // Find user by email using Drizzle query
-        const [user] = await db
-          .select()
-          .from(users)
-          .where(eq(users.email, credentials.email as string))
-          .limit(1);
-
-        if (!user || !user.passwordHash) {
-          return null;
-        }
-
-        // Verify password
-        const isValid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
-
-        if (!isValid) {
-          return null;
-        }
-
-        // Return user object for NextAuth session
-        return {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          image: user.image,
-          role: user.role,
-        };
       },
     }),
   ],

@@ -9,14 +9,20 @@ import {
 import { relations } from "drizzle-orm";
 import { mentors } from "./mentors";
 import { mentees } from "./mentees";
+import { reviews } from "./reviews";
 
-// Session status enum
+// Session status enum - updated to match frontend types
 export const sessionStatusEnum = pgEnum("session_status", [
-  "pending",
-  "booked",
+  "scheduled",
   "completed",
   "cancelled",
-  "no_show",
+  "rescheduled",
+]);
+
+// Meeting type enum
+export const meetingTypeEnum = pgEnum("meeting_type", [
+  "video",
+  "in-person",
 ]);
 
 /**
@@ -33,8 +39,11 @@ export const officeSessions = pgTable("office_sessions", {
     .notNull(),
   startsAt: timestamp("starts_at").notNull(),
   endsAt: timestamp("ends_at").notNull(),
-  status: sessionStatusEnum("status").default("booked").notNull(),
+  duration: integer("duration").notNull(), // Duration in minutes
+  status: sessionStatusEnum("status").default("scheduled").notNull(),
+  meetingType: meetingTypeEnum("meeting_type").default("video").notNull(),
   meetingUrl: text("meeting_url"),
+  goals: text("goals"), // Session goals/agenda
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -57,7 +66,7 @@ export const availability = pgTable("availability", {
 });
 
 // Relations
-export const officeSessionsRelations = relations(officeSessions, ({ one }) => ({
+export const officeSessionsRelations = relations(officeSessions, ({ one, many }) => ({
   mentor: one(mentors, {
     fields: [officeSessions.mentorId],
     references: [mentors.id],
@@ -66,6 +75,7 @@ export const officeSessionsRelations = relations(officeSessions, ({ one }) => ({
     fields: [officeSessions.menteeId],
     references: [mentees.id],
   }),
+  reviews: many(reviews),
 }));
 
 export const availabilityRelations = relations(availability, ({ one }) => ({

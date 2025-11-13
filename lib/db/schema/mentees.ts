@@ -1,6 +1,7 @@
 import { pgTable, uuid, text, timestamp } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 import { users } from "./users";
+import { reviews } from "./reviews";
 
 /**
  * Mentees table
@@ -20,10 +21,11 @@ export const mentees = pgTable("mentees", {
 });
 
 // Relations
-export const menteesRelations = relations(mentees, ({ one }) => ({
+export const menteesRelations = relations(mentees, ({ one, many }) => ({
   user: one(users, {
     fields: [mentees.userId],
     references: [users.id],
   }),
+  reviews: many(reviews),
 }));
 

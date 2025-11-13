@@ -22,7 +22,7 @@ class Logger {
    * Log an error with optional context
    */
   error(message: string, error?: Error | unknown, context?: LogContext): void {
-    const errorDetails = this.extractErrorDetails(error);
+    const errorDetails = this.extractErrorDetails(error, message);
     const logData = {
       message,
       ...errorDetails,
@@ -65,8 +65,10 @@ class Logger {
 
   /**
    * Extract error details from various error types
+   * @param error - The error object to extract details from
+   * @param fallbackMessage - Fallback message if error doesn't have a message
    */
-  private extractErrorDetails(error?: Error | unknown): Partial<{
+  private extractErrorDetails(error?: Error | unknown, fallbackMessage?: string): Partial<{
     error: string;
     stack: string;
     code: string;
@@ -76,25 +78,63 @@ class Logger {
     if (!error) return {};
 
     if (error instanceof Error) {
-      return {
-        error: error.message,
-        stack: error.stack,
-        name: error.name,
-        // Extract additional properties if they exist
-        ...(error as Record<string, unknown>),
-      };
+      const details: Record<string, unknown> = {};
+      
+      // Use error message if available, otherwise use fallback or generic message
+      if (error.message && error.message.trim()) {
+        details.error = error.message;
+      } else if (fallbackMessage) {
+        details.error = fallbackMessage;
+      } else {
+        details.error = "Unknown error";
+      }
+      
+      if (error.stack) {
+        details.stack = error.stack;
+      }
+      if (error.name) {
+        details.name = error.name;
+      }
+      
+      // Extract additional properties if they exist and are defined
+      const errorObj = error as Record<string, unknown>;
+      for (const [key, value] of Object.entries(errorObj)) {
+        if (value !== undefined && !["message", "stack", "name"].includes(key)) {
+          details[key] = value;
+        }
+      }
+      
+      return details;
     }
 
     // Handle non-Error objects (e.g., API errors)
     if (typeof error === "object" && error !== null) {
-      return {
-        error: String(error),
-        ...(error as Record<string, unknown>),
-      };
+      const details: Record<string, unknown> = {};
+      const errorObj = error as Record<string, unknown>;
+      
+      // Try to extract a meaningful error message
+      if (errorObj.message && typeof errorObj.message === "string" && errorObj.message.trim()) {
+        details.error = errorObj.message;
+      } else if (errorObj.error && typeof errorObj.error === "string" && errorObj.error.trim()) {
+        details.error = errorObj.error;
+      } else if (fallbackMessage) {
+        details.error = fallbackMessage;
+      } else {
+        details.error = String(error);
+      }
+      
+      // Include other properties that are defined
+      for (const [key, value] of Object.entries(errorObj)) {
+        if (value !== undefined && !["message", "error"].includes(key)) {
+          details[key] = value;
+        }
+      }
+      
+      return details;
     }
 
     return {
-      error: String(error),
+      error: fallbackMessage || String(error),
     };
   }
 }

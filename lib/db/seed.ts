@@ -23,7 +23,6 @@ import {
   generateAvailabilitySlots,
   DEFAULT_SEED_PASSWORD,
 } from "./seed-data";
-import { eq } from "drizzle-orm";
 import { logger } from "@/lib/utils/logger";
 import bcrypt from "bcryptjs";
 

@@ -76,12 +76,15 @@ function DashboardContent() {
 
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
-          {/* Left Column - Upcoming Sessions */}
-          <div className="lg:col-span-2">
+          {/* Left Column - Main Content */}
+          <div className="lg:col-span-2 space-y-6">
             <UpcomingSessions limit={5} />
+            
+            {/* Mentor Suggestions - Mentee Only */}
+            {user?.role === "mentee" && <MentorSuggestions limit={3} />}
           </div>
 
-          {/* Right Column - Quick Actions & Suggestions */}
+          {/* Right Column - Quick Actions */}
           <div className="space-y-6">
             {/* Quick Actions */}
             <Card variant="default" className="p-6">
@@ -108,9 +111,6 @@ function DashboardContent() {
                 </Link>
               </div>
             </Card>
-
-            {/* Mentor Suggestions - Mentee Only */}
-            {user?.role === "mentee" && <MentorSuggestions limit={3} />}
           </div>
         </div>
       </div>

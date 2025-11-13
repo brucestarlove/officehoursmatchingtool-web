@@ -5,6 +5,20 @@
 import { signIn as nextAuthSignIn, signOut as nextAuthSignOut, getSession as nextAuthGetSession } from "next-auth/react";
 
 /**
+ * Sign in result type
+ */
+export type SignInResult = 
+  | { error: { message: string }; data?: never }
+  | { error?: never; data: any };
+
+/**
+ * Sign up result type
+ */
+export type SignUpResult = 
+  | { error: { message: string }; data?: never }
+  | { error?: never; data: any };
+
+/**
  * Get current session on the client
  */
 export async function getSession() {
@@ -14,18 +28,52 @@ export async function getSession() {
 /**
  * Sign in with email and password
  */
-export async function signIn(email: string, password: string) {
-  const result = await nextAuthSignIn("credentials", {
-    email,
-    password,
-    redirect: false,
-  });
+export async function signIn(email: string, password: string): Promise<SignInResult> {
+  try {
+    const result = await nextAuthSignIn("credentials", {
+      email,
+      password,
+      redirect: false,
+    });
 
-  if (result?.error) {
-    return { error: { message: result.error } };
+    if (!result) {
+      return { error: { message: "Sign in failed: No response from server" } };
+    }
+
+    if (result.error) {
+      // Map NextAuth error codes to user-friendly messages
+      const errorCode = typeof result.error === "string" 
+        ? result.error 
+        : result.error.message || "CredentialsSignin";
+      
+      // Map NextAuth error codes to user-friendly messages
+      const errorMessages: Record<string, string> = {
+        CredentialsSignin: "Invalid email or password. Please check your credentials and try again.",
+        OAuthAccountNotLinked: "An account with this email already exists. Please sign in with your original method.",
+        EmailSignin: "Unable to send verification email. Please try again later.",
+        OAuthSignin: "Error signing in with OAuth provider. Please try again.",
+        OAuthCallback: "Error processing OAuth callback. Please try again.",
+        OAuthCreateAccount: "Unable to create account. Please try again.",
+        EmailCreateAccount: "Unable to create account. Please try again.",
+        Callback: "Error during authentication. Please try again.",
+        SessionRequired: "Please sign in to continue.",
+      };
+      
+      const userFriendlyMessage = errorMessages[errorCode] || 
+        "Invalid email or password. Please check your credentials and try again.";
+      
+      return { error: { message: userFriendlyMessage } };
+    }
+
+    if (!result.ok) {
+      return { error: { message: "Sign in failed: Authentication unsuccessful" } };
+    }
+
+    return { data: result };
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Sign in failed: Unexpected error";
+    return { error: { message: errorMessage } };
   }
-
-  return { data: result };
 }
 
 /**
@@ -37,31 +85,40 @@ export async function signUp(
   password: string,
   name?: string,
   role?: "mentor" | "mentee"
-) {
-  // Call our custom signup API endpoint
-  const response = await fetch("/api/auth/signup", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({ email, password, name, role }),
-  });
+): Promise<SignUpResult> {
+  try {
+    // Call our custom signup API endpoint
+    const response = await fetch("/api/auth/signup", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password, name, role }),
+    });
 
-  const data = await response.json();
+    const data = await response.json();
 
-  if (!response.ok) {
-    return { error: { message: data.error || "Sign up failed" } };
+    if (!response.ok) {
+      const errorMessage = data.error || data.message || "Sign up failed";
+      return { error: { message: errorMessage } };
+    }
+
+    // Automatically sign in after signup
+    return signIn(email, password);
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : "Sign up failed: Unexpected error";
+    return { error: { message: errorMessage } };
   }
-
-  // Automatically sign in after signup
-  return signIn(email, password);
 }
 
 /**
  * Sign out current user
  */
 export async function signOut() {
-  await nextAuthSignOut({ redirect: false });
+  await nextAuthSignOut({ 
+    redirect: false,
+    callbackUrl: "/login"
+  });
 }
 
 /**

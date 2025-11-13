@@ -46,13 +46,32 @@ export function useAuth() {
       email: string;
       password: string;
     }) => {
-      const result = await signIn(email, password);
-      if (result.error) {
-        throw new Error(result.error.message || "Sign in failed");
+      try {
+        const result = await signIn(email, password);
+        
+        if (result.error) {
+          // Extract error message with fallback
+          const errorMessage = result.error.message?.trim() || "Sign in failed";
+          throw new Error(errorMessage);
+        }
+        
+        if (!result.data) {
+          throw new Error("Sign in failed: No data returned");
+        }
+        
+        // Invalidate and refetch user
+        await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        return getCurrentUser();
+      } catch (error) {
+        // Ensure we always throw an Error with a valid message
+        if (error instanceof Error) {
+          if (!error.message || error.message.trim() === "") {
+            error.message = "Sign in failed: Unknown error occurred";
+          }
+          throw error;
+        }
+        throw new Error(error instanceof Error ? error.message : "Sign in failed: Unexpected error");
       }
-      // Invalidate and refetch user
-      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      return getCurrentUser();
     },
     onSuccess: () => {
       router.push("/dashboard");
@@ -75,13 +94,32 @@ export function useAuth() {
       name?: string;
       role?: "mentor" | "mentee";
     }) => {
-      const result = await signUp(email, password, name);
-      if (result.error) {
-        throw new Error(result.error.message || "Sign up failed");
+      try {
+        const result = await signUp(email, password, name);
+        
+        if (result.error) {
+          // Extract error message with fallback
+          const errorMessage = result.error.message?.trim() || "Sign up failed";
+          throw new Error(errorMessage);
+        }
+        
+        if (!result.data) {
+          throw new Error("Sign up failed: No data returned");
+        }
+        
+        // Invalidate and refetch user
+        await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
+        return getCurrentUser();
+      } catch (error) {
+        // Ensure we always throw an Error with a valid message
+        if (error instanceof Error) {
+          if (!error.message || error.message.trim() === "") {
+            error.message = "Sign up failed: Unknown error occurred";
+          }
+          throw error;
+        }
+        throw new Error(error instanceof Error ? error.message : "Sign up failed: Unexpected error");
       }
-      // Invalidate and refetch user
-      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
-      return getCurrentUser();
     },
     onSuccess: () => {
       router.push("/dashboard");
@@ -95,13 +133,19 @@ export function useAuth() {
   const signOutMutation = useMutation({
     mutationFn: async () => {
       await signOut();
+      // Clear all queries
       queryClient.clear();
+      // Invalidate auth query to ensure session is cleared
+      await queryClient.invalidateQueries({ queryKey: AUTH_QUERY_KEY });
     },
     onSuccess: () => {
-      router.push("/login");
+      // Force a hard redirect to ensure session is cleared
+      window.location.href = "/login";
     },
     onError: (error) => {
       logger.error("Sign out failed", error, { context: "useAuth.signOutMutation" });
+      // Even on error, try to redirect
+      window.location.href = "/login";
     },
   });
 

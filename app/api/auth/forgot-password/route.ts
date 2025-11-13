@@ -53,7 +53,7 @@ export async function POST(request: Request) {
 
     // TODO: Send email with reset code
     // For now, we'll just return success
-    // In production, integrate with email service (SendGrid, AWS SES, etc.)
+    // In production, integrate with email service (SendGrid, Resend, etc.)
     console.log(`Password reset code for ${email}: ${code}`);
 
     return NextResponse.json({

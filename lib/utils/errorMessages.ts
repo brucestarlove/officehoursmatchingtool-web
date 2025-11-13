@@ -57,12 +57,41 @@ export function getErrorMessage(error: unknown, fallback = "An unexpected error 
   if (error instanceof Error) {
     const message = error.message;
     
+    // NextAuth error codes - map to user-friendly messages
+    if (message === "CredentialsSignin" || message.includes("CredentialsSignin")) {
+      return "Invalid email or password. Please check your credentials and try again.";
+    }
+    if (message.includes("OAuthAccountNotLinked")) {
+      return "An account with this email already exists. Please sign in with your original method.";
+    }
+    if (message.includes("EmailSignin")) {
+      return "Unable to send verification email. Please try again later.";
+    }
+    if (message.includes("OAuthSignin")) {
+      return "Error signing in with OAuth provider. Please try again.";
+    }
+    if (message.includes("OAuthCallback")) {
+      return "Error processing OAuth callback. Please try again.";
+    }
+    if (message.includes("OAuthCreateAccount")) {
+      return "Unable to create account. Please try again.";
+    }
+    if (message.includes("EmailCreateAccount")) {
+      return "Unable to create account. Please try again.";
+    }
+    if (message.includes("Callback") && !message.includes("OAuthCallback")) {
+      return "Error during authentication. Please try again.";
+    }
+    if (message.includes("SessionRequired")) {
+      return "Please sign in to continue.";
+    }
+    
     // Generic error messages
     if (message.includes("User does not exist")) {
-      return "No account found with this email address.";
+      return "Invalid email or password. Please check your credentials and try again.";
     }
     if (message.includes("Incorrect username or password") || message.includes("Invalid email or password")) {
-      return "Invalid email or password. Please try again.";
+      return "Invalid email or password. Please check your credentials and try again.";
     }
     if (message.includes("Invalid verification code") || message.includes("verification code")) {
       return "Invalid verification code. Please check and try again.";
