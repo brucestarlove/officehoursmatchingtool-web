@@ -147,7 +147,7 @@ export async function POST(request: NextRequest) {
     const scoredMentees = filteredMentees.map((mentee) => {
       const menteeGoals = mentee.goals
         ? (typeof mentee.goals === "string"
-            ? mentee.goals.split(",").map((g) => g.trim())
+            ? mentee.goals.split(",").map((g: string) => g.trim())
             : Array.isArray(mentee.goals)
             ? mentee.goals
             : [])
