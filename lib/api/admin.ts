@@ -97,6 +97,13 @@ export interface MentorPerformanceResponse {
     averageRating: number;
     averageUtilization: number;
   };
+  pagination?: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+    hasMore: boolean;
+  };
 }
 
 export interface UtilizationResponse {
@@ -183,11 +190,15 @@ export async function getMentorPerformance(params?: {
   sort?: "sessions" | "rating" | "utilization";
   minSessions?: number;
   minRating?: number;
+  page?: number;
+  limit?: number;
 }): Promise<MentorPerformanceResponse> {
   const searchParams = new URLSearchParams();
   if (params?.sort) searchParams.set("sort", params.sort);
   if (params?.minSessions) searchParams.set("minSessions", String(params.minSessions));
   if (params?.minRating) searchParams.set("minRating", String(params.minRating));
+  if (params?.page) searchParams.set("page", String(params.page));
+  if (params?.limit) searchParams.set("limit", String(params.limit));
 
   const response = await apiClient.get<MentorPerformanceResponse>(
     `/admin/mentors?${searchParams.toString()}`

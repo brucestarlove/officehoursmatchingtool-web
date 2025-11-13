@@ -6,7 +6,6 @@ import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { MetricsCard } from "./MetricsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-cf";
-import { Badge } from "@/components/ui/badge-cf";
 import { AlertCircle } from "lucide-react";
 
 export interface UtilizationDashboardProps {
@@ -29,14 +28,14 @@ export function UtilizationDashboard({ className }: UtilizationDashboardProps) {
   }
 
   // Prepare data for charts
-  const utilizationChartData = data.utilizationByMentor
+  const utilizationChartData = (data.utilizationByMentor || [])
     .slice(0, 10) // Top 10 mentors
     .map((m) => ({
       name: m.mentorName,
       value: m.utilizationRate,
     }));
 
-  const trendData = data.utilizationTrends.map((t) => ({
+  const trendData = (data.utilizationTrends || []).map((t) => ({
     date: t.date,
     value: t.value,
   }));
@@ -46,22 +45,22 @@ export function UtilizationDashboard({ className }: UtilizationDashboardProps) {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
         <MetricsCard
           title="Overall Utilization"
-          value={`${data.overallUtilizationRate.toFixed(1)}%`}
-          description={`${data.totalBookedHours.toFixed(1)}h / ${data.totalAvailableHours.toFixed(1)}h`}
+          value={`${(data.overallUtilizationRate || 0).toFixed(1)}%`}
+          description={`${(data.totalBookedHours || 0).toFixed(1)}h / ${(data.totalAvailableHours || 0).toFixed(1)}h`}
         />
         <MetricsCard
           title="High Utilization Mentors"
-          value={data.engagementDistribution.high}
+          value={data.engagementDistribution?.high || 0}
           description="≥70% utilization"
         />
         <MetricsCard
           title="Low Utilization Alerts"
-          value={data.lowUtilizationAlerts.length}
+          value={(data.lowUtilizationAlerts || []).length}
           description="<20% utilization"
         />
       </div>
 
-      {data.lowUtilizationAlerts.length > 0 && (
+      {(data.lowUtilizationAlerts || []).length > 0 && (
         <Card variant="beige" className="mb-6">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -92,14 +91,14 @@ export function UtilizationDashboard({ className }: UtilizationDashboardProps) {
         </Card>
       )}
 
-      {data.recommendations.length > 0 && (
+      {(data.recommendations || []).length > 0 && (
         <Card variant="beige" className="mb-6">
           <CardHeader>
             <CardTitle>Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="list-disc list-inside space-y-1">
-              {data.recommendations.map((rec, index) => (
+              {(data.recommendations || []).map((rec, index) => (
                 <li key={index} className="text-sm text-gray-700">
                   {rec}
                 </li>
@@ -133,21 +132,21 @@ export function UtilizationDashboard({ className }: UtilizationDashboardProps) {
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-2xl font-bold text-green-600">
-                {data.engagementDistribution.high}
+                {data.engagementDistribution?.high || 0}
               </div>
               <div className="text-sm text-gray-600">High (≥70%)</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-yellow-600">
-                {data.engagementDistribution.medium}
+                {data.engagementDistribution?.medium || 0}
               </div>
               <div className="text-sm text-gray-600">Medium (20-70%)</div>
             </div>
             <div className="text-center">
               <div className="text-2xl font-bold text-red-600">
-                {data.engagementDistribution.low}
+                {data.engagementDistribution?.low || 0}
               </div>
-              <div className="text-sm text-gray-600">Low (<20%)</div>
+              <div className="text-sm text-gray-600">Low (&lt;20%)</div>
             </div>
           </div>
         </CardContent>
@@ -155,4 +154,3 @@ export function UtilizationDashboard({ className }: UtilizationDashboardProps) {
     </div>
   );
 }
-

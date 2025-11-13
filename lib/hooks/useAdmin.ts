@@ -66,6 +66,8 @@ export function useMentorPerformance(params?: {
   sort?: "sessions" | "rating" | "utilization";
   minSessions?: number;
   minRating?: number;
+  page?: number;
+  limit?: number;
 }) {
   return useQuery<MentorPerformanceResponse>({
     queryKey: adminQueryKeys.mentors(params),
@@ -88,4 +90,3 @@ export function useUtilization(params?: {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 }
-

@@ -15,18 +15,28 @@ export function MentorPerformanceTable({ className }: MentorPerformanceTableProp
   const [sort, setSort] = React.useState<"sessions" | "rating" | "utilization">("sessions");
   const [minSessions, setMinSessions] = React.useState<number | undefined>();
   const [minRating, setMinRating] = React.useState<number | undefined>();
+  const [page, setPage] = React.useState(1);
+  const [limit, setLimit] = React.useState(25);
 
   const { data, isLoading, error } = useMentorPerformance({
     sort,
     minSessions,
     minRating,
+    page,
+    limit,
   });
 
   const handleSort = (key: string) => {
     if (key === "sessions" || key === "rating" || key === "utilization") {
       setSort(key);
+      setPage(1); // Reset to first page on sort change
     }
   };
+
+  // Reset to first page when filters change
+  React.useEffect(() => {
+    setPage(1);
+  }, [minSessions, minRating]);
 
   const columns: Column<any>[] = [
     {
@@ -124,6 +134,20 @@ export function MentorPerformanceTable({ className }: MentorPerformanceTableProp
         onSort={handleSort}
         emptyMessage={isLoading ? "Loading..." : "No mentors found"}
       />
+      {data?.pagination && (
+        <Pagination
+          page={page}
+          totalPages={data.pagination.totalPages}
+          total={data.pagination.total}
+          limit={limit}
+          onPageChange={setPage}
+          onLimitChange={(newLimit) => {
+            setLimit(newLimit);
+            setPage(1);
+          }}
+          className="mt-4"
+        />
+      )}
       {data?.statistics && (
         <div className="mt-4 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-sm font-semibold text-gray-700 mb-2">Statistics</h3>
@@ -152,4 +176,3 @@ export function MentorPerformanceTable({ className }: MentorPerformanceTableProp
     </div>
   );
 }
-

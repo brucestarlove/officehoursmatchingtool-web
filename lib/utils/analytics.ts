@@ -63,7 +63,7 @@ export async function aggregateSessionsOverTime(
 
   const result = await dbInstance
     .select({
-      date: sql<string>`TO_CHAR(${officeSessions.startsAt}, ${sql.raw(`'${dateFormat}'`)})`,
+      date: sql<string>`TO_CHAR(DATE_TRUNC(${sql.raw(`'${dateTrunc}'`)}, ${officeSessions.startsAt}), ${sql.raw(`'${dateFormat}'`)})`,
       value: sql<number>`COUNT(*)::int`,
     })
     .from(officeSessions)

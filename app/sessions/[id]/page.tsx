@@ -2,9 +2,11 @@
 
 import { useRouter } from "next/navigation";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { SessionDetail } from "@/components/sessions/SessionDetail";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
+import { Button } from "@/components/ui/button-cf";
 import { useSession } from "@/lib/hooks/useSessions";
 
 export default function SessionPage() {
@@ -59,6 +61,11 @@ function SessionPageContent() {
 
   return (
     <div className="container mx-auto max-w-4xl p-4 md:p-8">
+      <div className="mb-6 flex justify-end">
+        <Link href="/dashboard">
+          <Button variant="outline">Back to Dashboard</Button>
+        </Link>
+      </div>
       <SessionDetail session={session} onReschedule={handleReschedule} />
     </div>
   );

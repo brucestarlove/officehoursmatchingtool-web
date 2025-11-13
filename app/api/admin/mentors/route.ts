@@ -37,6 +37,8 @@ export async function GET(request: NextRequest) {
     const minRating = searchParams.get("minRating")
       ? parseFloat(searchParams.get("minRating")!)
       : null;
+    const page = parseInt(searchParams.get("page") || "1", 10);
+    const limit = parseInt(searchParams.get("limit") || "25", 10);
 
     // Get all mentors with their user info
     const allMentors = await db.query.mentors.findMany({
@@ -136,9 +138,10 @@ export async function GET(request: NextRequest) {
         performance.sort((a, b) => b.sessionCount - a.sessionCount);
     }
 
-    // Calculate statistics
+    // Calculate statistics (before pagination)
+    const totalMentors = performance.length;
     const stats = {
-      totalMentors: performance.length,
+      totalMentors,
       averageSessions: performance.length > 0
         ? Math.round(
             (performance.reduce((sum, p) => sum + p.sessionCount, 0) / performance.length) * 100
@@ -156,9 +159,22 @@ export async function GET(request: NextRequest) {
         : 0,
     };
 
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = startIndex + limit;
+    const paginatedMentors = performance.slice(startIndex, endIndex);
+    const totalPages = Math.ceil(totalMentors / limit);
+
     return NextResponse.json({
-      mentors: performance,
+      mentors: paginatedMentors,
       statistics: stats,
+      pagination: {
+        page,
+        limit,
+        total: totalMentors,
+        totalPages,
+        hasMore: endIndex < totalMentors,
+      },
     });
   } catch (error) {
     return createErrorResponse(error);

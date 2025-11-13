@@ -27,6 +27,9 @@ function DashboardContent() {
   const { user, signOut, isSigningOut } = useAuth();
   const { data: sessionsData } = useSessions({ status: "upcoming" });
 
+  // Check if user is admin or PM
+  const isAdmin = user?.role === "admin" || user?.role === "pm";
+
   // Calculate stats (mock for now - would come from API)
   const sessionsThisMonth = sessionsData?.sessions.length || 0;
   const averageRating = user?.role === "mentor" ? 4.8 : undefined;
@@ -75,6 +78,46 @@ function DashboardContent() {
           </div>
         )}
 
+        {/* Admin Quick Links - Prominent Section */}
+        {isAdmin && (
+          <Card variant="teal-border" className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-semibold text-cf-teal-700">Admin Dashboard</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Monitor platform health and manage sessions
+                </p>
+              </div>
+            </div>
+            <div className="grid gap-4 md:grid-cols-3">
+              <Link href="/admin/analytics">
+                <Card variant="beige" className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <h3 className="font-semibold text-gray-900 mb-2">Analytics</h3>
+                  <p className="text-sm text-gray-600">
+                    View platform metrics, trends, and feedback distribution
+                  </p>
+                </Card>
+              </Link>
+              <Link href="/admin/sessions">
+                <Card variant="beige" className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <h3 className="font-semibold text-gray-900 mb-2">Sessions</h3>
+                  <p className="text-sm text-gray-600">
+                    Manage all sessions, filter, sort, and export data
+                  </p>
+                </Card>
+              </Link>
+              <Link href="/admin/utilization">
+                <Card variant="beige" className="p-4 hover:shadow-md transition-shadow cursor-pointer h-full">
+                  <h3 className="font-semibold text-gray-900 mb-2">Utilization</h3>
+                  <p className="text-sm text-gray-600">
+                    Track mentor utilization rates and engagement
+                  </p>
+                </Card>
+              </Link>
+            </div>
+          </Card>
+        )}
+
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
@@ -89,6 +132,30 @@ function DashboardContent() {
           <div className="space-y-6">
             {/* Profile Sidebar */}
             <ProfileSidebar />
+
+            {/* Admin Navigation */}
+            {isAdmin && (
+              <Card variant="teal-border" className="p-6">
+                <h3 className="mb-4 text-lg font-semibold text-cf-teal-700">Admin Tools</h3>
+                <div className="space-y-2">
+                  <Link href="/admin/analytics">
+                    <Button variant="secondary" className="w-full">
+                      Analytics Dashboard
+                    </Button>
+                  </Link>
+                  <Link href="/admin/sessions">
+                    <Button variant="secondary" className="w-full">
+                      Session Management
+                    </Button>
+                  </Link>
+                  <Link href="/admin/utilization">
+                    <Button variant="secondary" className="w-full">
+                      Mentor Utilization
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            )}
 
             {/* Quick Actions */}
             <Card variant="default" className="p-6">
@@ -116,4 +183,3 @@ function DashboardContent() {
     </div>
   );
 }
-
