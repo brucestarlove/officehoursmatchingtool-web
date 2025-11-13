@@ -4,7 +4,7 @@ import * as React from "react";
 import { Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button-cf";
 import { exportData } from "@/lib/api/admin";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import type { DateRange } from "./DateRangeSelector";
 
 export interface ExportButtonProps {
@@ -23,7 +23,6 @@ export function ExportButton({
   className,
 }: ExportButtonProps) {
   const [isExporting, setIsExporting] = React.useState(false);
-  const { success, error } = useToast();
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -52,15 +51,13 @@ export function ExportButton({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      success(
-        "Export successful",
-        `Your ${type} data has been downloaded.`
-      );
+      toast.success("Export successful", {
+        description: `Your ${type} data has been downloaded.`,
+      });
     } catch (err) {
-      error(
-        "Export failed",
-        err instanceof Error ? err.message : "Failed to export data"
-      );
+      toast.error("Export failed", {
+        description: err instanceof Error ? err.message : "Failed to export data",
+      });
     } finally {
       setIsExporting(false);
     }

@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { QueryProvider } from "@/lib/providers/QueryProvider";
 import { SessionProvider } from "@/lib/providers/SessionProvider";
-import { ToastProvider } from "@/components/ui/ToastProvider";
+import { Toaster } from "@/components/ui/sonner";
 import { ErrorBoundary } from "@/components/ui/ErrorBoundary";
 import "./globals.css";
 
@@ -33,7 +33,8 @@ export default function RootLayout({
         <ErrorBoundary>
           <SessionProvider>
             <QueryProvider>
-              <ToastProvider>{children}</ToastProvider>
+              {children}
+              <Toaster position="top-right" />
             </QueryProvider>
           </SessionProvider>
         </ErrorBoundary>

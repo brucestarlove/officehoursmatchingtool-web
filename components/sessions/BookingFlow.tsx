@@ -11,7 +11,7 @@ import { ErrorMessage } from "@/components/ui/error-message";
 import { useMentor, useMentorAvailability } from "@/lib/hooks/useMentors";
 import { useBookSession } from "@/lib/hooks/useSessions";
 import { useAuth } from "@/lib/hooks/useAuth";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
 import type { TimeSlot } from "@/types";
 import Image from "next/image";
@@ -49,7 +49,6 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
   );
 
   const bookSessionMutation = useBookSession();
-  const toast = useToast();
 
   // Clear error when step changes or slot changes
   useEffect(() => {
@@ -135,7 +134,9 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
         setBookingTimeout(null);
       }
 
-      toast.success("Session booked!", "Your session has been successfully booked.");
+      toast.success("Session booked!", {
+        description: "Your session has been successfully booked.",
+      });
       setStep(3);
     } catch (error: any) {
       // Clear timeout on error
@@ -171,7 +172,9 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
         setBookingError(errorMessage);
       }
 
-      toast.error("Failed to book session", errorMessage);
+      toast.error("Failed to book session", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -362,4 +365,3 @@ export function BookingFlow({ mentorId, initialStartTime }: BookingFlowProps) {
     </div>
   );
 }
-

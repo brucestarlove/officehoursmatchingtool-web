@@ -24,6 +24,44 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) to see the application.
 
+### Environment Variables
+
+Required environment variables:
+
+```bash
+# Database
+DATABASE_URL=postgresql://...
+
+# NextAuth
+NEXTAUTH_SECRET=...
+NEXTAUTH_URL=http://localhost:3000
+
+# Email (Resend)
+RESEND_API_KEY=re_...
+RESEND_FROM_EMAIL=noreply@yourdomain.com
+
+# Application
+APP_URL=http://localhost:3000
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+
+# Cron (optional, for production)
+CRON_SECRET=your-secret-key-here
+```
+
+**Email Configuration:**
+- `RESEND_API_KEY`: Your Resend API key from [resend.com](https://resend.com)
+- `RESEND_FROM_EMAIL`: The verified sender email address in Resend
+- `APP_URL`: Base URL for email links (used in email templates)
+
+**Cron Configuration:**
+- `CRON_SECRET`: Optional secret for manually testing cron endpoints (not required for Vercel's automatic cron jobs)
+
+**Important Notes:**
+- Vercel cron jobs **only run in production deployments** (not in preview deployments or local development)
+- The cron job is configured in `vercel.json` and will automatically run hourly once deployed
+- To test locally, you can manually call: `GET http://localhost:3000/api/cron/send-reminders` (with `Authorization: Bearer <CRON_SECRET>` header if `CRON_SECRET` is set)
+- Vercel automatically adds authentication headers to cron requests, so no manual setup is needed in production
+
 ### Build
 
 ```bash
@@ -90,8 +128,3 @@ See `docs/plans/` for detailed phase documentation:
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 - `npm run type-check` - Run TypeScript type checking
-
-## License
-
-Private - CF Office Hours Matching Tool
-

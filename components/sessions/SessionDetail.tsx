@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button-cf";
 import { Badge } from "@/components/ui/badge-cf";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { useRescheduleSession, useCancelSession } from "@/lib/hooks/useSessions";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
 import type { Session } from "@/types";
 
@@ -23,7 +23,6 @@ export function SessionDetail({ session, onReschedule }: SessionDetailProps) {
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
   const rescheduleMutation = useRescheduleSession();
   const cancelMutation = useCancelSession();
-  const toast = useToast();
 
   const formatDateTime = (dateString: string) => {
     const date = new Date(dateString);
@@ -56,10 +55,14 @@ export function SessionDetail({ session, onReschedule }: SessionDetailProps) {
   const handleCancel = async () => {
     try {
       await cancelMutation.mutateAsync(session.id);
-      toast.success("Session cancelled", "The session has been successfully cancelled.");
+      toast.success("Session cancelled", {
+        description: "The session has been successfully cancelled.",
+      });
       setShowCancelConfirm(false);
     } catch (error) {
-      toast.error("Failed to cancel session", getErrorMessage(error));
+      toast.error("Failed to cancel session", {
+        description: getErrorMessage(error),
+      });
     }
   };
 

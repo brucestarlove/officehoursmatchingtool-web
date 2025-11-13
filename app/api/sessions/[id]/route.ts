@@ -260,6 +260,9 @@ export async function PUT(
       );
     }
 
+    // Store old start time for email notification
+    const oldStartTime = session.startsAt.toISOString();
+
     // Update session
     const [updatedSession] = await db
       .update(officeSessions)
@@ -339,6 +342,17 @@ export async function PUT(
       updatedAt: sessionWithRelations.updatedAt.toISOString(),
     };
 
+    // Send reschedule emails (don't block response if email fails)
+    try {
+      const { sendSessionRescheduledEmails } = await import("@/lib/email/send");
+      await sendSessionRescheduledEmails(sessionResponse, oldStartTime);
+    } catch (emailError) {
+      logger.error("Failed to send reschedule emails", emailError, {
+        sessionId: id,
+      });
+      // Continue - email failure shouldn't break the reschedule
+    }
+
     return NextResponse.json(sessionResponse);
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -384,6 +398,27 @@ export async function DELETE(
       );
     }
 
+    // Determine who cancelled the session
+    const cancelledBy: "mentor" | "mentee" =
+      mentorProfile && session.mentorId === mentorProfile.id ? "mentor" : "mentee";
+
+    // Fetch full session with relations before cancelling (for email)
+    const sessionWithRelations = await db.query.officeSessions.findFirst({
+      where: eq(officeSessions.id, id),
+      with: {
+        mentor: {
+          with: {
+            user: true,
+          },
+        },
+        mentee: {
+          with: {
+            user: true,
+          },
+        },
+      },
+    });
+
     // Update session status to cancelled
     await db
       .update(officeSessions)
@@ -392,6 +427,64 @@ export async function DELETE(
         updatedAt: new Date(),
       })
       .where(eq(officeSessions.id, id));
+
+    // Send cancellation emails (don't block response if email fails)
+    if (sessionWithRelations) {
+      try {
+        const sessionResponse: Session = {
+          id: sessionWithRelations.id,
+          mentorId: sessionWithRelations.mentorId,
+          menteeId: sessionWithRelations.menteeId,
+          mentor: sessionWithRelations.mentor
+            ? {
+                id: sessionWithRelations.mentor.id,
+                userId: sessionWithRelations.mentor.userId,
+                name: sessionWithRelations.mentor.user?.name || "Unknown",
+                email: sessionWithRelations.mentor.user?.email || "",
+                expertise: [],
+                industries: sessionWithRelations.mentor.industry
+                  ? [sessionWithRelations.mentor.industry]
+                  : [],
+                company: sessionWithRelations.mentor.company || undefined,
+                title: sessionWithRelations.mentor.title || undefined,
+                profilePhoto: sessionWithRelations.mentor.photoUrl || undefined,
+                createdAt: sessionWithRelations.mentor.createdAt.toISOString(),
+                updatedAt: sessionWithRelations.mentor.updatedAt.toISOString(),
+              }
+            : undefined,
+          mentee: sessionWithRelations.mentee
+            ? {
+                id: sessionWithRelations.mentee.id,
+                userId: sessionWithRelations.mentee.userId,
+                name: sessionWithRelations.mentee.user?.name || "Unknown",
+                email: sessionWithRelations.mentee.user?.email || "",
+                goals: sessionWithRelations.mentee.goals
+                  ? [sessionWithRelations.mentee.goals]
+                  : [],
+                interests: [],
+                createdAt: sessionWithRelations.mentee.createdAt.toISOString(),
+                updatedAt: sessionWithRelations.mentee.updatedAt.toISOString(),
+              }
+            : undefined,
+          startTime: sessionWithRelations.startsAt.toISOString(),
+          duration: sessionWithRelations.duration,
+          meetingType: sessionWithRelations.meetingType as "video" | "in-person",
+          meetingLink: sessionWithRelations.meetingUrl || undefined,
+          goals: sessionWithRelations.goals || undefined,
+          status: "cancelled" as Session["status"],
+          createdAt: sessionWithRelations.createdAt.toISOString(),
+          updatedAt: sessionWithRelations.updatedAt.toISOString(),
+        };
+
+        const { sendSessionCancelledEmails } = await import("@/lib/email/send");
+        await sendSessionCancelledEmails(sessionResponse, cancelledBy);
+      } catch (emailError) {
+        logger.error("Failed to send cancellation emails", emailError, {
+          sessionId: id,
+        });
+        // Continue - email failure shouldn't break the cancellation
+      }
+    }
 
     return new NextResponse(null, { status: 204 });
   } catch (error) {

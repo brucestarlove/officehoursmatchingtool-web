@@ -1,14 +1,12 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { FeedbackForm } from "@/components/feedback/FeedbackForm";
 import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
 import { useFeedback } from "@/lib/hooks/useFeedback";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { getSessionById } from "@/lib/api/sessions";
-import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Skeleton } from "@/components/ui/Skeleton";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
 import type { FeedbackSubmission } from "@/types";
@@ -22,7 +20,6 @@ function FeedbackPageContent() {
   const router = useRouter();
   const sessionId = params.id as string;
   const { submitFeedback, isSubmitting } = useFeedback();
-  const toast = useToast();
 
   // Get session details
   const { data: session, isLoading: isLoadingSession } = useQuery({
@@ -33,16 +30,17 @@ function FeedbackPageContent() {
   const handleSubmit = async (data: FeedbackSubmission) => {
     try {
       await submitFeedback({ sessionId, data });
-      toast.success(
-        "Feedback submitted!",
-        "Thank you for your feedback. It helps us improve the matching experience."
-      );
+      toast.success("Feedback submitted!", {
+        description: "Thank you for your feedback. It helps us improve the matching experience.",
+      });
       // Redirect to dashboard after a short delay
       setTimeout(() => {
         router.push("/dashboard");
       }, 1500);
     } catch (error) {
-      toast.error("Failed to submit feedback", getErrorMessage(error));
+      toast.error("Failed to submit feedback", {
+        description: getErrorMessage(error),
+      });
     }
   };
 
@@ -116,5 +114,3 @@ export default function FeedbackPage() {
     </ProtectedRoute>
   );
 }
-
-

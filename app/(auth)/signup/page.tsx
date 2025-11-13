@@ -15,14 +15,12 @@ import { LoadingSpinner } from "@/components/ui/loading-spinner";
 import { Card } from "@/components/ui/card-cf";
 import { Badge } from "@/components/ui/badge-cf";
 import { logger } from "@/lib/utils/logger";
-import { useToast } from "@/lib/hooks/useToast";
+import { toast } from "sonner";
 import { getErrorMessage } from "@/lib/utils/errorMessages";
 import { getAuthFormDefaults, saveAuthFormState, clearAuthFormState } from "@/lib/utils/authFormState";
 
 export default function SignUpPage() {
-  const router = useRouter();
   const { signUp, isSigningUp } = useAuth();
-  const toast = useToast();
   const [error, setError] = useState<string | null>(null);
 
   const {
@@ -72,7 +70,9 @@ export default function SignUpPage() {
       const errorMessage = getErrorMessage(err, "Sign up failed. Please try again.");
       logger.error("Sign up error", err);
       setError(errorMessage);
-      toast.error("Sign up failed", errorMessage);
+      toast.error("Sign up failed", {
+        description: errorMessage,
+      });
     }
   };
 
@@ -228,4 +228,3 @@ export default function SignUpPage() {
     </div>
   );
 }
-
