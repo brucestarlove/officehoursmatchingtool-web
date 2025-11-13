@@ -121,15 +121,17 @@ function DashboardContent() {
         {/* Main Content Grid */}
         <div className="grid gap-6 lg:grid-cols-3">
           {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            <UpcomingSessions limit={5} />
-            
-            {/* Mentor Suggestions - Mentee Only */}
-            {user?.role === "mentee" && <MentorSuggestions limit={3} />}
-          </div>
+          {!isAdmin && (
+            <div className="lg:col-span-2 space-y-6">
+              <UpcomingSessions limit={5} />
+              
+              {/* Mentor Suggestions - Mentee Only */}
+              {user?.role === "mentee" && <MentorSuggestions limit={3} />}
+            </div>
+          )}
 
           {/* Right Column - Profile & Quick Actions */}
-          <div className="space-y-6">
+          <div className={`space-y-6 ${isAdmin ? "lg:col-span-3" : ""}`}>
             {/* Profile Sidebar */}
             <ProfileSidebar />
 
@@ -157,26 +159,28 @@ function DashboardContent() {
               </Card>
             )}
 
-            {/* Quick Actions */}
-            <Card variant="default" className="p-6">
-              <h3 className="mb-4 text-lg font-semibold">Quick Actions</h3>
-              <div className="space-y-2">
-                {user?.role === "mentee" && (
-                  <Link href="/match">
-                    <Button variant="default" className="w-full">
-                      Find a Mentor
-                    </Button>
-                  </Link>
-                )}
-                {user?.role === "mentor" && (
-                  <Link href="/mentor/availability">
-                    <Button variant="secondary" className="w-full">
-                      Update Availability
-                    </Button>
-                  </Link>
-                )}
-              </div>
-            </Card>
+            {/* Quick Actions - Hidden for Admin */}
+            {!isAdmin && (
+              <Card variant="default" className="p-6">
+                <h3 className="mb-4 text-lg font-semibold">Quick Actions</h3>
+                <div className="space-y-2">
+                  {user?.role === "mentee" && (
+                    <Link href="/match">
+                      <Button variant="default" className="w-full">
+                        Find a Mentor
+                      </Button>
+                    </Link>
+                  )}
+                  {user?.role === "mentor" && (
+                    <Link href="/mentor/availability">
+                      <Button variant="secondary" className="w-full">
+                        Update Availability
+                      </Button>
+                    </Link>
+                  )}
+                </div>
+              </Card>
+            )}
           </div>
         </div>
       </div>
