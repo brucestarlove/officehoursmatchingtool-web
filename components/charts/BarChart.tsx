@@ -111,7 +111,7 @@ export function BarChart({
             dataKey={dataKey}
             name={name}
             fill={CF_COLORS.teal}
-            onClick={onBarClick ? (_, entry) => onBarClick(entry) : undefined}
+            onClick={onBarClick ? (_, entry: any) => onBarClick(entry as BarChartData) : undefined}
             cursor={onBarClick ? "pointer" : "default"}
           >
             {data.map((entry, index) => (

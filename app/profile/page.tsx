@@ -123,21 +123,23 @@ function ProfileContent() {
       };
 
       if (isMentor) {
-        updateData.headline = data.headline;
-        updateData.bio = data.bio;
-        updateData.company = data.company;
-        updateData.title = data.title;
-        updateData.industry = data.industry;
-        updateData.stage = data.stage;
-        updateData.timezone = data.timezone;
-        updateData.photoUrl = data.photoUrl;
-        updateData.linkedinUrl = data.linkedinUrl;
+        const mentorData = data as z.infer<typeof updateMentorProfileSchema> & { name: string };
+        updateData.headline = mentorData.headline;
+        updateData.bio = mentorData.bio;
+        updateData.company = mentorData.company;
+        updateData.title = mentorData.title;
+        updateData.industry = mentorData.industry;
+        updateData.stage = mentorData.stage;
+        updateData.timezone = mentorData.timezone;
+        updateData.photoUrl = mentorData.photoUrl;
+        updateData.linkedinUrl = mentorData.linkedinUrl;
       } else {
-        updateData.company = data.company;
-        updateData.stage = data.stage;
-        updateData.industry = data.industry;
+        const menteeData = data as z.infer<typeof updateMenteeProfileSchema> & { name: string };
+        updateData.company = menteeData.company;
+        updateData.stage = menteeData.stage;
+        updateData.industry = menteeData.industry;
         // Convert goals string to array or keep as string
-        updateData.goals = data.goals;
+        updateData.goals = menteeData.goals;
       }
 
       await updateProfile(updateData);
@@ -210,7 +212,7 @@ function ProfileContent() {
             {isMentor && (
               <div className="space-y-2">
                 <Label>Profile Photo</Label>
-                {profileData && "photoUrl" in profileData && profileData.photoUrl ? (
+                {profileData && "photoUrl" in profileData && profileData.photoUrl && typeof profileData.photoUrl === "string" ? (
                   <div className="relative h-32 w-32 rounded-full overflow-hidden border-2 border-primary">
                     <Image
                       src={profileData.photoUrl}
@@ -276,8 +278,8 @@ function ProfileContent() {
                     {...register("headline")}
                     disabled={isUpdating}
                   />
-                  {errors.headline && (
-                    <ErrorMessage message={errors.headline.message} />
+                  {"headline" in errors && errors.headline && (
+                    <ErrorMessage message={errors.headline?.message || "Invalid headline"} />
                   )}
                 </div>
 
@@ -291,8 +293,8 @@ function ProfileContent() {
                     {...register("bio")}
                     disabled={isUpdating}
                   />
-                  {errors.bio && (
-                    <ErrorMessage message={errors.bio.message} />
+                  {"bio" in errors && errors.bio && (
+                    <ErrorMessage message={errors.bio?.message || "Invalid bio"} />
                   )}
                 </div>
 
@@ -306,8 +308,8 @@ function ProfileContent() {
                       {...register("title")}
                       disabled={isUpdating}
                     />
-                    {errors.title && (
-                      <ErrorMessage message={errors.title.message} />
+                    {"title" in errors && errors.title && (
+                      <ErrorMessage message={errors.title?.message || "Invalid title"} />
                     )}
                   </div>
 
@@ -365,8 +367,8 @@ function ProfileContent() {
                     {...register("timezone")}
                     disabled={isUpdating}
                   />
-                  {errors.timezone && (
-                    <ErrorMessage message={errors.timezone.message} />
+                  {"timezone" in errors && errors.timezone && (
+                    <ErrorMessage message={errors.timezone?.message || "Invalid timezone"} />
                   )}
                 </div>
 
@@ -379,8 +381,8 @@ function ProfileContent() {
                     {...register("photoUrl")}
                     disabled={isUpdating}
                   />
-                  {errors.photoUrl && (
-                    <ErrorMessage message={errors.photoUrl.message} />
+                  {"photoUrl" in errors && errors.photoUrl && (
+                    <ErrorMessage message={errors.photoUrl?.message || "Invalid photo URL"} />
                   )}
                 </div>
 
@@ -393,8 +395,8 @@ function ProfileContent() {
                     {...register("linkedinUrl")}
                     disabled={isUpdating}
                   />
-                  {errors.linkedinUrl && (
-                    <ErrorMessage message={errors.linkedinUrl.message} />
+                  {"linkedinUrl" in errors && errors.linkedinUrl && (
+                    <ErrorMessage message={errors.linkedinUrl?.message || "Invalid LinkedIn URL"} />
                   )}
                 </div>
               </div>
@@ -456,8 +458,8 @@ function ProfileContent() {
                     {...register("goals")}
                     disabled={isUpdating}
                   />
-                  {errors.goals && (
-                    <ErrorMessage message={errors.goals.message} />
+                  {"goals" in errors && errors.goals && (
+                    <ErrorMessage message={errors.goals?.message || "Invalid goals"} />
                   )}
                   <p className="text-xs text-muted-foreground">
                     Enter your goals separated by commas or on separate lines

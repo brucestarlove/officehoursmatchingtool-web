@@ -42,9 +42,13 @@ export async function signIn(email: string, password: string): Promise<SignInRes
 
     if (result.error) {
       // Map NextAuth error codes to user-friendly messages
-      const errorCode = typeof result.error === "string" 
-        ? result.error 
-        : result.error.message || "CredentialsSignin";
+      let errorCode = "CredentialsSignin";
+      if (typeof result.error === "string") {
+        errorCode = result.error;
+      } else if (result.error && typeof result.error === "object" && "message" in result.error) {
+        const errorObj = result.error as { message?: string };
+        errorCode = typeof errorObj.message === "string" ? errorObj.message : "CredentialsSignin";
+      }
       
       // Map NextAuth error codes to user-friendly messages
       const errorMessages: Record<string, string> = {

@@ -17,6 +17,7 @@ export interface PieChartData {
   value: number;
   count?: number;
   percentage?: number;
+  [key: string]: any;
 }
 
 export interface PieChartProps {

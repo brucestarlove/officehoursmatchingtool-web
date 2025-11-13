@@ -37,7 +37,7 @@ export function ProfileSidebar() {
     <Card variant="default" className="p-6">
       <div className="space-y-4">
         {/* Profile Photo */}
-        {profileData && "photoUrl" in profileData && profileData.photoUrl ? (
+        {profileData && "photoUrl" in profileData && profileData.photoUrl && typeof profileData.photoUrl === "string" ? (
           <div className="flex justify-center">
             <div className="relative h-20 w-20 rounded-full overflow-hidden border-2 border-primary">
               <Image
@@ -70,41 +70,60 @@ export function ProfileSidebar() {
         {/* Role-specific info */}
         {isMentor && profileData && "headline" in profileData && (
           <div className="space-y-2">
-            {profileData.headline && (
-              <p className="text-sm text-center text-muted-foreground line-clamp-2">
-                {profileData.headline}
-              </p>
-            )}
-            {profileData.company && profileData.title && (
-              <p className="text-xs text-center text-muted-foreground">
-                {profileData.title} at {profileData.company}
-              </p>
-            )}
-            {profileData.industry && (
-              <p className="text-xs text-center text-muted-foreground">
-                {profileData.industry}
-              </p>
-            )}
+            {(() => {
+              const headline = profileData.headline;
+              return headline && typeof headline === "string" ? (
+                <p className="text-sm text-center text-muted-foreground line-clamp-2">
+                  {headline}
+                </p>
+              ) : null;
+            })()}
+            {(() => {
+              const company = "company" in profileData ? profileData.company : undefined;
+              const title = "title" in profileData ? profileData.title : undefined;
+              return company && title && typeof company === "string" && typeof title === "string" ? (
+                <p className="text-xs text-center text-muted-foreground">
+                  {title} at {company}
+                </p>
+              ) : null;
+            })()}
+            {(() => {
+              const industry = "industry" in profileData ? profileData.industry : undefined;
+              return industry && typeof industry === "string" ? (
+                <p className="text-xs text-center text-muted-foreground">
+                  {industry}
+                </p>
+              ) : null;
+            })()}
           </div>
         )}
 
         {!isMentor && profileData && "goals" in profileData && (
           <div className="space-y-2">
-            {profileData.company && (
-              <p className="text-xs text-center text-muted-foreground">
-                {profileData.company}
-              </p>
-            )}
-            {profileData.stage && (
-              <p className="text-xs text-center text-muted-foreground">
-                Stage: {profileData.stage}
-              </p>
-            )}
-            {profileData.industry && (
-              <p className="text-xs text-center text-muted-foreground">
-                {profileData.industry}
-              </p>
-            )}
+            {(() => {
+              const company = "company" in profileData ? profileData.company : undefined;
+              return company && typeof company === "string" ? (
+                <p className="text-xs text-center text-muted-foreground">
+                  {company}
+                </p>
+              ) : null;
+            })()}
+            {(() => {
+              const stage = "stage" in profileData ? profileData.stage : undefined;
+              return stage && typeof stage === "string" ? (
+                <p className="text-xs text-center text-muted-foreground">
+                  Stage: {stage}
+                </p>
+              ) : null;
+            })()}
+            {(() => {
+              const industry = "industry" in profileData ? profileData.industry : undefined;
+              return industry && typeof industry === "string" ? (
+                <p className="text-xs text-center text-muted-foreground">
+                  {industry}
+                </p>
+              ) : null;
+            })()}
           </div>
         )}
 

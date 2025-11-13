@@ -97,7 +97,7 @@ class Logger {
       }
       
       // Extract additional properties if they exist and are defined
-      const errorObj = error as Record<string, unknown>;
+      const errorObj = error as unknown as Record<string, unknown>;
       for (const [key, value] of Object.entries(errorObj)) {
         if (value !== undefined && !["message", "stack", "name"].includes(key)) {
           details[key] = value;

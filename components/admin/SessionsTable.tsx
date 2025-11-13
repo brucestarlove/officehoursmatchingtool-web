@@ -86,7 +86,7 @@ export function SessionsTable({ className }: SessionsTableProps) {
     },
   ];
 
-  const getStatusBadgeVariant = (status: string) => {
+  const getStatusBadgeVariant = (status: string): "default" | "accent" | "success" | "destructive" | "outline" => {
     switch (status) {
       case "completed":
         return "success";
@@ -95,7 +95,7 @@ export function SessionsTable({ className }: SessionsTableProps) {
       case "scheduled":
         return "default";
       default:
-        return "secondary";
+        return "outline";
     }
   };
 

@@ -34,7 +34,7 @@ export function MentorSuggestions({ limit = 3 }: MentorSuggestionsProps) {
       return "startup mentorship";
     }
     
-    const goals = user.profile.goals;
+    const goals = user.profile.goals as string | string[] | null | undefined;
     
     // Handle array
     if (Array.isArray(goals)) {

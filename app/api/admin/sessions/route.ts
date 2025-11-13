@@ -9,8 +9,8 @@ import { db } from "@/lib/db";
 import { officeSessions } from "@/lib/db/schema";
 import { and, eq, gte, lte, or, desc, asc, sql } from "drizzle-orm";
 import { createErrorResponse } from "@/lib/utils/api-errors";
-import type { Session, SessionStatus } from "@/types";
-import { DEFAULT_PAGE_SIZE } from "@/lib/constants/sessions";
+import type { Session } from "@/types";
+import { DEFAULT_PAGE_SIZE, type SessionStatus } from "@/lib/constants/sessions";
 
 export async function GET(request: NextRequest) {
   try {

@@ -26,7 +26,7 @@ export function useProfile() {
       const user = await getCurrentUser();
       return user;
     },
-    retry: QUERY_RETRY.STANDARD,
+    retry: QUERY_RETRY.DEFAULT,
     staleTime: QUERY_STALE_TIMES.STANDARD,
   });
 

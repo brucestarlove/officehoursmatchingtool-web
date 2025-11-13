@@ -143,7 +143,7 @@ export function DataTable<T extends Record<string, any>>({
                     )}
                   >
                     {onRowSelect && getRowId && (
-                      <td className="px-4 py-3" onClick={handleRowSelect}>
+                      <td className="px-4 py-3" onClick={(e) => handleRowSelect(e, row)}>
                         <input
                           type="checkbox"
                           checked={isSelected}

@@ -79,7 +79,7 @@ export async function GET(
       profile = {
         ...profile,
         goals: parseGoals(profile.goals as string | null | undefined),
-      };
+      } as typeof profile & { goals: string[] };
     }
 
     const response = {
@@ -209,7 +209,7 @@ export async function PUT(
       profile = {
         ...profile,
         goals: parseGoals(profile.goals as string | null | undefined),
-      };
+      } as typeof profile & { goals: string[] };
     }
 
     const response = {

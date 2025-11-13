@@ -23,7 +23,7 @@ export function ExportButton({
   className,
 }: ExportButtonProps) {
   const [isExporting, setIsExporting] = React.useState(false);
-  const { toast } = useToast();
+  const { success, error } = useToast();
 
   const handleExport = async () => {
     setIsExporting(true);
@@ -52,17 +52,15 @@ export function ExportButton({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
 
-      toast({
-        title: "Export successful",
-        description: `Your ${type} data has been downloaded.`,
-        variant: "success",
-      });
-    } catch (error) {
-      toast({
-        title: "Export failed",
-        description: error instanceof Error ? error.message : "Failed to export data",
-        variant: "error",
-      });
+      success(
+        "Export successful",
+        `Your ${type} data has been downloaded.`
+      );
+    } catch (err) {
+      error(
+        "Export failed",
+        err instanceof Error ? err.message : "Failed to export data"
+      );
     } finally {
       setIsExporting(false);
     }
