@@ -123,7 +123,7 @@ export async function PUT(
         .where(eq(users.id, id));
     }
 
-    // Update role-specific profile
+    // Update or create role-specific profile
     if (currentUser.role === "mentor") {
       const mentorUpdates = updateMentorProfileSchema.parse(body);
       if (Object.keys(mentorUpdates).length > 0) {
@@ -133,6 +133,7 @@ export async function PUT(
         });
 
         if (mentor) {
+          // Update existing mentor profile
           await db
             .update(mentors)
             .set({
@@ -140,6 +141,14 @@ export async function PUT(
               updatedAt: new Date(),
             })
             .where(eq(mentors.id, mentor.id));
+        } else {
+          // Create new mentor profile if it doesn't exist
+          await db.insert(mentors).values({
+            userId: id,
+            ...mentorUpdates,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
         }
       }
     } else if (currentUser.role === "mentee") {
@@ -151,6 +160,7 @@ export async function PUT(
         });
 
         if (mentee) {
+          // Update existing mentee profile
           await db
             .update(mentees)
             .set({
@@ -158,6 +168,14 @@ export async function PUT(
               updatedAt: new Date(),
             })
             .where(eq(mentees.id, mentee.id));
+        } else {
+          // Create new mentee profile if it doesn't exist
+          await db.insert(mentees).values({
+            userId: id,
+            ...menteeUpdates,
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
         }
       }
     }

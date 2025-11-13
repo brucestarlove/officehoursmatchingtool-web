@@ -81,15 +81,6 @@ function MentorPageContent() {
 
   return (
     <div className="container mx-auto max-w-4xl p-4 md:p-8">
-      {/* Desktop Book Button - Sticky */}
-      <div className="sticky top-4 z-10 mb-6 hidden md:block">
-        <div className="flex justify-end">
-          <Button variant="default" size="lg" onClick={handleBookClick}>
-            Book Session
-          </Button>
-        </div>
-      </div>
-
       <MentorProfile
         mentor={mentor}
         availableSlots={availability?.availableSlots || []}

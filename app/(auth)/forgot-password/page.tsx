@@ -102,6 +102,8 @@ export default function ForgotPasswordPage() {
                 <Input
                   id="code"
                   type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
                   placeholder="123456"
                   {...resetForm.register("code")}
                   disabled={isLoading}

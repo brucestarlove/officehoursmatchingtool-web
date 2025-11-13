@@ -13,6 +13,7 @@ interface AvailabilityCalendarProps {
   timezone: string;
   onSlotSelect?: (slot: TimeSlot) => void;
   selectedSlot?: TimeSlot | null;
+  onBookClick?: () => void;
 }
 
 /**
@@ -24,6 +25,7 @@ export function AvailabilityCalendar({
   timezone,
   onSlotSelect,
   selectedSlot,
+  onBookClick,
 }: AvailabilityCalendarProps) {
   const [viewMode, setViewMode] = useState<"month" | "week">("month");
 
@@ -83,6 +85,15 @@ export function AvailabilityCalendar({
         </Button>
       </div>
 
+      {/* Book Session Button - Below Month/Week buttons */}
+      {onBookClick && (
+        <div className="mb-4">
+          <Button variant="default" size="sm" onClick={onBookClick}>
+            Book Session
+          </Button>
+        </div>
+      )}
+
       {/* Available Slots List */}
       {availableSlots.length === 0 ? (
         <div className="py-8 text-center text-sm text-muted-foreground">
@@ -133,6 +144,15 @@ export function AvailabilityCalendar({
               </div>
             </div>
           ))}
+        </div>
+      )}
+
+      {/* Book Session Button - Bottom of section */}
+      {onBookClick && (
+        <div className="mt-6 flex justify-center">
+          <Button variant="default" size="lg" onClick={onBookClick}>
+            Book Session
+          </Button>
         </div>
       )}
     </Card>

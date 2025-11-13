@@ -9,6 +9,7 @@ import { SessionConfirmation } from "./templates/SessionConfirmation";
 import { SessionReminder } from "./templates/SessionReminder";
 import { SessionRescheduled } from "./templates/SessionRescheduled";
 import { SessionCancelled } from "./templates/SessionCancelled";
+import { PasswordReset } from "./templates/PasswordReset";
 import type { Session } from "@/types";
 
 /**
@@ -260,3 +261,23 @@ export async function sendSessionCancelledEmails(
   await Promise.allSettled(promises);
 }
 
+/**
+ * Send password reset code email
+ */
+export async function sendPasswordResetEmail(
+  email: string,
+  code: string,
+  expiresInMinutes: number = 15
+): Promise<void> {
+  await sendEmail({
+    to: email,
+    subject: "Password Reset Code - CF Office Hours",
+    react: (
+      <PasswordReset
+        code={code}
+        email={email}
+        expiresInMinutes={expiresInMinutes}
+      />
+    ),
+  });
+}

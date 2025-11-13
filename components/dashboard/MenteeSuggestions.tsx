@@ -5,21 +5,21 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card-cf";
 import { Button } from "@/components/ui/button-cf";
-import { MentorCard } from "@/components/match/MentorCard";
+import { MenteeCard } from "@/components/match/MenteeCard";
 import { LoadingSpinner } from "@/components/ui/loading-spinner";
-import { useMatchMentors } from "@/lib/hooks/useMentors";
+import { useMatchMentees } from "@/lib/hooks/useMentees";
 import { useAuth } from "@/lib/hooks/useAuth";
 import { useState, useRef } from "react";
 
-interface MentorSuggestionsProps {
+interface MenteeSuggestionsProps {
   limit?: number;
   hasProfile?: boolean;
 }
 
 /**
- * Carousel of suggested mentors based on past searches and feedback
+ * Carousel of suggested mentees based on mentor expertise and mentee goals
  */
-export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSuggestionsProps) {
+export function MenteeSuggestions({ limit = 3, hasProfile = true }: MenteeSuggestionsProps) {
   const router = useRouter();
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -30,53 +30,29 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
   // Minimum swipe distance (in pixels)
   const minSwipeDistance = 50;
 
-  // Handle Book Session button click - navigate to booking page
-  const handleBookClick = (mentorId: string) => {
-    router.push(`/sessions/book?mentorId=${mentorId}`);
-  };
-
-  // Get suggestions based on user's goals/interests and feedback history
-  // Safely handle goals which might be an array, string, null, or undefined
-  const getGoalsString = () => {
-    if (!user?.profile || !("goals" in user.profile)) {
+  // Get mentor's expertise to match with mentees
+  const getExpertiseString = () => {
+    if (!user?.profile || !("expertise" in user.profile)) {
       return "startup mentorship";
     }
     
-    const goals = user.profile.goals as string | string[] | null | undefined;
+    const expertise = user.profile.expertise as string[] | null | undefined;
     
-    // Handle array
-    if (Array.isArray(goals)) {
-      return goals.length > 0 ? goals.join(", ") : "startup mentorship";
+    if (Array.isArray(expertise) && expertise.length > 0) {
+      return expertise.join(", ");
     }
     
-    // Handle string (might be JSON string or comma-separated)
-    if (typeof goals === "string" && goals.trim()) {
-      try {
-        // Try parsing as JSON first
-        const parsed = JSON.parse(goals);
-        if (Array.isArray(parsed)) {
-          return parsed.length > 0 ? parsed.join(", ") : "startup mentorship";
-        }
-      } catch {
-        // If not JSON, treat as comma-separated string
-        return goals;
-      }
-      return goals;
-    }
-    
-    // Fallback
     return "startup mentorship";
   };
   
-  const suggestionQuery = getGoalsString();
+  const matchQuery = getExpertiseString();
 
-  // Enhanced filters: incorporate feedback data if available
-  // Only fetch mentors if user has a profile
-  const { data: matchData, isLoading } = useMatchMentors({
-    query: hasProfile ? suggestionQuery : "", // Empty query if no profile
+  // Fetch mentees that match mentor's expertise
+  // Only fetch if user has a profile
+  const { data: matchData, isLoading } = useMatchMentees({
+    query: hasProfile ? matchQuery : "", // Empty query if no profile
     filters: {
-      minRating: 4, // Prefer highly rated mentors
-      pastInteractions: "new-mentors-only", // Suggest new mentors by default
+      pastInteractions: "new-mentees-only", // Suggest new mentees by default
     },
   });
 
@@ -85,12 +61,12 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
     return (
       <Card variant="default">
         <CardHeader>
-          <CardTitle>Mentors You Might Like</CardTitle>
+          <CardTitle>Potential Mentee Matches</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="py-8 text-center">
             <p className="text-sm text-muted-foreground mb-4">
-              Complete your profile to see personalized mentor suggestions based on your goals and interests.
+              Complete your profile to see mentees that match your expertise and interests.
             </p>
             <Link href="/profile">
               <Button variant="default">
@@ -107,7 +83,7 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
     return (
       <Card variant="default">
         <CardHeader>
-          <CardTitle>Mentors You Might Like</CardTitle>
+          <CardTitle>Potential Mentee Matches</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center py-8">
@@ -118,18 +94,18 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
     );
   }
 
-  const mentors = matchData?.mentors.slice(0, limit) || [];
+  const mentees = matchData?.mentees.slice(0, limit) || [];
 
-  if (mentors.length === 0) {
+  if (mentees.length === 0) {
     return null;
   }
 
   const handlePrevious = () => {
-    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : mentors.length - 1));
+    setCurrentIndex((prev) => (prev > 0 ? prev - 1 : mentees.length - 1));
   };
 
   const handleNext = () => {
-    setCurrentIndex((prev) => (prev < mentors.length - 1 ? prev + 1 : 0));
+    setCurrentIndex((prev) => (prev < mentees.length - 1 ? prev + 1 : 0));
   };
 
   // Touch handlers for swipe gestures
@@ -156,12 +132,16 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
     }
   };
 
+  const handleViewClick = (menteeId: string) => {
+    router.push(`/mentees/${menteeId}`);
+  };
+
   return (
     <Card variant="default">
       <CardHeader>
         <div className="flex items-center justify-between">
-          <CardTitle>Mentors You Might Like</CardTitle>
-          <Link href="/match">
+          <CardTitle>Potential Mentee Matches</CardTitle>
+          <Link href="/match?role=mentee">
             <Button variant="ghost" size="sm">
               View All
             </Button>
@@ -182,13 +162,13 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
               className="flex transition-transform duration-300 ease-in-out"
               style={{ transform: `translateX(-${currentIndex * 100}%)` }}
             >
-              {mentors.map((mentor) => (
-                <div key={mentor.id} className="min-w-full flex-shrink-0 px-2">
-                  <MentorCard
-                    mentor={mentor}
-                    matchExplanation={matchData?.matchExplanations[mentor.id]}
+              {mentees.map((mentee) => (
+                <div key={mentee.id} className="min-w-full flex-shrink-0 px-2">
+                  <MenteeCard
+                    mentee={mentee}
+                    matchExplanation={matchData?.matchExplanations[mentee.id]}
                     showMatchReason={true}
-                    onBookClick={handleBookClick}
+                    onViewClick={handleViewClick}
                   />
                 </div>
               ))}
@@ -196,7 +176,7 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
           </div>
 
           {/* Navigation */}
-          {mentors.length > 1 && (
+          {mentees.length > 1 && (
             <div className="mt-4 flex items-center justify-between">
               <Button
                 variant="outline"
@@ -207,7 +187,7 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <div className="flex gap-1">
-                {mentors.map((_, index) => (
+                {mentees.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => setCurrentIndex(index)}
@@ -221,7 +201,7 @@ export function MentorSuggestions({ limit = 3, hasProfile = true }: MentorSugges
                 variant="outline"
                 size="icon"
                 onClick={handleNext}
-                disabled={currentIndex === mentors.length - 1}
+                disabled={currentIndex === mentees.length - 1}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>

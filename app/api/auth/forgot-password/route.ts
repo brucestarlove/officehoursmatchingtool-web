@@ -8,6 +8,7 @@ import { db } from "@/lib/db";
 import { users, verificationTokens } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 import { createErrorResponse } from "@/lib/utils/api-errors";
+import { logger } from "@/lib/utils/logger";
 import crypto from "crypto";
 
 export async function POST(request: Request) {
@@ -51,10 +52,18 @@ export async function POST(request: Request) {
       expires,
     });
 
-    // TODO: Send email with reset code
-    // For now, we'll just return success
-    // In production, integrate with email service (SendGrid, Resend, etc.)
-    console.log(`Password reset code for ${email}: ${code}`);
+    // Send password reset email (don't block response if email fails)
+    try {
+      const { sendPasswordResetEmail } = await import("@/lib/email/send");
+      await sendPasswordResetEmail(email, code, 15);
+      logger.info("Password reset email sent", { email });
+    } catch (emailError) {
+      logger.error("Failed to send password reset email", emailError, {
+        email,
+      });
+      // Continue - email failure shouldn't break the reset flow
+      // The code is still stored in the database, user can request again if needed
+    }
 
     return NextResponse.json({
       message: "If an account exists, a reset code has been sent.",

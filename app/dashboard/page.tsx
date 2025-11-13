@@ -6,6 +6,7 @@ import { Card } from "@/components/ui/card-cf";
 import { Button } from "@/components/ui/button-cf";
 import { UpcomingSessions } from "@/components/dashboard/UpcomingSessions";
 import { MentorSuggestions } from "@/components/dashboard/MentorSuggestions";
+import { MenteeSuggestions } from "@/components/dashboard/MenteeSuggestions";
 import {
   SessionsThisMonthCard,
   AverageRatingCard,
@@ -14,6 +15,7 @@ import {
 import { ProfileSidebar } from "@/components/dashboard/ProfileSidebar";
 import Link from "next/link";
 import { useSessions } from "@/lib/hooks/useSessions";
+import { AlertCircle } from "lucide-react";
 
 export default function DashboardPage() {
   return (
@@ -29,6 +31,9 @@ function DashboardContent() {
 
   // Check if user is admin or PM
   const isAdmin = user?.role === "admin" || user?.role === "pm";
+  
+  // Check if user has created their profile (mentor/mentee record)
+  const hasProfile = !!user?.profile;
 
   // Calculate stats (mock for now - would come from API)
   const sessionsThisMonth = sessionsData?.sessions.length || 0;
@@ -65,8 +70,30 @@ function DashboardContent() {
           </Button>
         </div>
 
-        {/* Stats Cards - Mentor Only */}
-        {user?.role === "mentor" && (
+        {/* Alert Banner - Profile Required */}
+        {!isAdmin && !hasProfile && (
+          <Card variant="yellow-border" className="p-4">
+            <div className="flex items-start gap-4">
+              <AlertCircle className="h-5 w-5 text-cf-yellow-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <h3 className="font-semibold text-cf-yellow-900 mb-1">
+                  Complete Your Profile to Get Started
+                </h3>
+                <p className="text-sm text-cf-yellow-800 mb-3">
+                  Your profile is essential for using the platform. Create your {user?.role === "mentor" ? "mentor" : "mentee"} profile to start {user?.role === "mentor" ? "mentoring" : "finding mentors"} and booking sessions.
+                </p>
+                <Link href="/profile">
+                  <Button variant="default" size="sm">
+                    Create Your Profile!
+                  </Button>
+                </Link>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* Stats Cards - Mentor Only (show only if profile exists) */}
+        {user?.role === "mentor" && hasProfile && (
           <div className="grid gap-6 md:grid-cols-3">
             <SessionsThisMonthCard count={sessionsThisMonth} />
             {averageRating !== undefined && (
@@ -123,10 +150,14 @@ function DashboardContent() {
           {/* Left Column - Main Content */}
           {!isAdmin && (
             <div className="lg:col-span-2 space-y-6">
-              <UpcomingSessions limit={5} />
+              {/* Upcoming Sessions - Only show if profile exists */}
+              {hasProfile && <UpcomingSessions limit={5} />}
               
-              {/* Mentor Suggestions - Mentee Only */}
-              {user?.role === "mentee" && <MentorSuggestions limit={3} />}
+              {/* Mentor Suggestions - Mentee Only, show even without profile but with message */}
+              {user?.role === "mentee" && <MentorSuggestions limit={3} hasProfile={hasProfile} />}
+              
+              {/* Mentee Suggestions - Mentor Only, show even without profile but with message */}
+              {user?.role === "mentor" && <MenteeSuggestions limit={3} hasProfile={hasProfile} />}
             </div>
           )}
 
@@ -165,16 +196,24 @@ function DashboardContent() {
                 <h3 className="mb-4 text-lg font-semibold">Quick Actions</h3>
                 <div className="space-y-2">
                   {user?.role === "mentee" && (
-                    <Link href="/match">
-                      <Button variant="default" className="w-full">
-                        Find a Mentor
+                    <Link href={hasProfile ? "/match" : "/profile"}>
+                      <Button 
+                        variant={hasProfile ? "default" : "secondary"} 
+                        className="w-full"
+                        disabled={!hasProfile}
+                      >
+                        {hasProfile ? "Find a Mentor" : "Create Profile to Find Mentors"}
                       </Button>
                     </Link>
                   )}
                   {user?.role === "mentor" && (
-                    <Link href="/mentor/availability">
-                      <Button variant="secondary" className="w-full">
-                        Update Availability
+                    <Link href={hasProfile ? "/mentor/availability" : "/profile"}>
+                      <Button 
+                        variant={hasProfile ? "secondary" : "default"} 
+                        className="w-full"
+                        disabled={!hasProfile}
+                      >
+                        {hasProfile ? "Update Availability" : "Create Profile to Set Availability"}
                       </Button>
                     </Link>
                   )}
